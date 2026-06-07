@@ -4,14 +4,12 @@
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover"/>
   <meta name="theme-color" content="#070d1b"/>
-  <meta name="description" content="Smart personal money manager in LKR"/>
   <meta name="apple-mobile-web-app-capable" content="yes"/>
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent"/>
   <meta name="apple-mobile-web-app-title" content="SmartWallet"/>
   <title>SmartWallet</title>
   <link rel="manifest" href="manifest.json"/>
   <link rel="apple-touch-icon" href="icon.svg"/>
-  <link rel="preconnect" href="https://fonts.googleapis.com"/>
   <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800&display=swap" rel="stylesheet"/>
   <script src="https://cdn.tailwindcss.com"></script>
   <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
@@ -20,21 +18,17 @@
   <style>
     *,*::before,*::after{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
     html,body{margin:0;padding:0;background:#070d1b;height:100%}
-    #root{height:100%}
     select{-webkit-appearance:none;appearance:none}
     input[type=date]::-webkit-calendar-picker-indicator{filter:invert(1);opacity:.5}
     ::-webkit-scrollbar{width:0}
     @keyframes spin{to{transform:rotate(360deg)}}
-    .spin{animation:spin 1s linear infinite}
   </style>
 </head>
 <body>
   <div id="root"></div>
-
   <script type="text/babel">
     const { useState, useEffect, useCallback } = React;
 
-    /* ── Config ─────────────────────────────── */
     const SB_URL = "https://rvlvbrgysnnuxmyozuuw.supabase.co";
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2bHZicmd5c25udXhteW96dXV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NDMzMTMsImV4cCI6MjA5NjMxOTMxM30.O6Cm77n1eZL5NGXDNBvAdQ_TcuCCa-ppzH9z4iV7JN4";
 
@@ -42,39 +36,31 @@
     const INC_SRC  = ["Salary","Overtime","Allowances","Bonus","Other"];
     const BILL_TYP = ["Loan Installment","Credit Card","Electricity","Router/Internet","Telephone","Water","Custom"];
     const EXP_CATS = ["Food & Groceries","Transport","Family & Kids","Health","Education","Leisure","Emergency","Other"];
-    const BILL_DEF = {
-      "Loan Installment":"Loan Installment","Credit Card":"Credit Card Bill",
-      "Electricity":"Electricity Bill","Router/Internet":"Router / Internet Bill",
-      "Telephone":"Telephone Bill","Water":"Water Bill","Custom":"Custom Bill"
-    };
-    const COLORS = {
-      "Food & Groceries":"#10b981","Transport":"#3b82f6","Family & Kids":"#f59e0b",
-      "Health":"#ef4444","Education":"#8b5cf6","Leisure":"#06b6d4",
-      "Savings":"#84cc16","Buffer":"#64748b","Emergency":"#f97316","Other":"#9ca3af"
-    };
+    const BILL_DEF = {"Loan Installment":"Loan Installment","Credit Card":"Credit Card Bill","Electricity":"Electricity Bill","Router/Internet":"Router / Internet Bill","Telephone":"Telephone Bill","Water":"Water Bill","Custom":"Custom Bill"};
+    const COLORS   = {"Food & Groceries":"#10b981","Transport":"#3b82f6","Family & Kids":"#f59e0b","Health":"#ef4444","Education":"#8b5cf6","Leisure":"#06b6d4","Savings":"#84cc16","Buffer":"#64748b","Emergency":"#f97316","Other":"#9ca3af"};
 
-    /* ── SVG Icons ──────────────────────────── */
     const SVG = {
       home:    `<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>`,
       dollar:  `<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>`,
       receipt: `<path d="M4 2v20l2-1 2 1 2-1 2 1 2-1 2 1 2-1 2 1V2l-2 1-2-1-2 1-2-1-2 1-2-1-2 1-2-1z"/><line x1="9" y1="9" x2="15" y2="9"/><line x1="9" y1="13" x2="15" y2="13"/>`,
+      wallet:  `<path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><circle cx="16" cy="12" r="2"/>`,
+      swap:    `<path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/>`,
+      dots:    `<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>`,
       target:  `<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>`,
       chart:   `<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>`,
       logout:  `<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>`,
       x:       `<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>`,
       trash:   `<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>`,
-      wallet:  `<path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><circle cx="16" cy="12" r="2"/>`,
       check:   `<polyline points="20 6 9 17 4 12"/>`,
       up:      `<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>`,
       refresh: `<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>`,
+      alert:   `<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>`,
     };
     const Ic = ({ n, size=20, color="currentColor" }) => (
-      <svg width={size} height={size} viewBox="0 0 24 24" fill="none"
-        stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"
-        dangerouslySetInnerHTML={{ __html: SVG[n]||"" }}/>
+      <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: SVG[n]||"" }}/>
     );
 
-    /* ── Supabase REST ──────────────────────── */
+    /* ── Supabase ── */
     const sb = {
       h: t => ({ apikey:SB_KEY, Authorization:`Bearer ${t||SB_KEY}`, "Content-Type":"application/json", Prefer:"return=representation" }),
       async auth(ep, body, t) {
@@ -101,7 +87,7 @@
       }
     };
 
-    /* ── Smart Budget Engine ────────────────── */
+    /* ── Budget Engine ── */
     function smartBudget(disp) {
       if (disp <= 0) return {};
       let p;
@@ -112,25 +98,33 @@
       return Object.fromEntries(Object.entries(p).map(([k,v])=>[k,{pct:v,amount:Math.round(disp*v/100)}]));
     }
 
-    /* ── Utils ──────────────────────────────── */
+    /* ── Utils ── */
     const fmt    = n => `LKR ${Number(n||0).toLocaleString("en-LK",{minimumFractionDigits:2,maximumFractionDigits:2})}`;
     const fmtK   = n => Number(n||0)>=1000 ? `LKR ${(Number(n)/1000).toFixed(1)}K` : fmt(n);
     const today  = () => new Date().toISOString().split("T")[0];
     const CM     = () => new Date().getMonth()+1;
     const CY     = () => new Date().getFullYear();
     const ord    = n => { const s=["th","st","nd","rd"],v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); };
-    const S      = (base, extra={}) => ({ ...base, ...extra });
 
-    /* ── Primitives ─────────────────────────── */
+    /* ── UI Primitives ── */
     const Card = ({ children, style={} }) => (
-      <div style={S({background:"#121c30",borderRadius:16,padding:16},style)}>{children}</div>
+      <div style={{background:"#121c30",borderRadius:16,padding:16,...style}}>{children}</div>
     );
     const Row = ({ children, style={} }) => (
-      <div style={S({display:"flex",alignItems:"center"},style)}>{children}</div>
+      <div style={{display:"flex",alignItems:"center",...style}}>{children}</div>
+    );
+    const SubTabs = ({ options, value, onChange }) => (
+      <div style={{display:"flex",background:"#121c30",borderRadius:14,padding:3,marginBottom:4}}>
+        {options.map(([v,l]) => (
+          <button key={v} onClick={()=>onChange(v)} style={{flex:1,padding:"8px 0",borderRadius:10,fontSize:12,fontWeight:600,border:"none",cursor:"pointer",fontFamily:"Outfit,sans-serif",background:value===v?"#10b981":"transparent",color:value===v?"#fff":"#64748b",transition:"all .2s"}}>
+            {l}
+          </button>
+        ))}
+      </div>
     );
     const Modal = ({ title, onClose, children }) => (
       <div style={{position:"fixed",inset:0,zIndex:50,display:"flex",alignItems:"flex-end",background:"rgba(0,0,0,.78)"}}>
-        <div style={{width:"100%",background:"#0c1525",borderRadius:"24px 24px 0 0",padding:24,maxHeight:"90vh",overflowY:"auto"}}>
+        <div style={{width:"100%",background:"#0c1525",borderRadius:"24px 24px 0 0",padding:24,maxHeight:"92vh",overflowY:"auto"}}>
           <Row style={{justifyContent:"space-between",marginBottom:20}}>
             <h3 style={{margin:0,color:"#fff",fontFamily:"Outfit,sans-serif",fontSize:18,fontWeight:700}}>{title}</h3>
             <button onClick={onClose} style={{width:32,height:32,borderRadius:"50%",background:"#1e2d45",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
@@ -154,10 +148,7 @@
       </div>
     );
     const Btn = ({ children, v="primary", ...p }) => {
-      const vs = {
-        primary:   {background:"linear-gradient(135deg,#10b981,#059669)",color:"#fff"},
-        secondary: {background:"#1a2740",color:"#10b981",border:"1px solid #10b98133"},
-      };
+      const vs = { primary:{background:"linear-gradient(135deg,#10b981,#059669)",color:"#fff"}, secondary:{background:"#1a2740",color:"#10b981",border:"1px solid #10b98133"} };
       return <button style={{width:"100%",borderRadius:12,padding:"12px 0",fontSize:14,fontWeight:600,border:"none",cursor:"pointer",fontFamily:"Outfit,sans-serif",...vs[v]}} {...p}>{children}</button>;
     };
     const DelBtn = ({ onClick }) => (
@@ -165,16 +156,19 @@
         <Ic n="trash" size={13} color="#f87171"/>
       </button>
     );
+    const Tag = ({ label, color, bg }) => (
+      <span style={{fontSize:9,background:bg,color,borderRadius:6,padding:"1px 6px",fontWeight:700,flexShrink:0}}>{label}</span>
+    );
 
-    /* ── Simple Charts ──────────────────────── */
+    /* ── Charts ── */
     const BarChart = ({ data }) => {
       const max = Math.max(...data.map(d=>d.value),1);
       return (
-        <div style={{display:"flex",alignItems:"flex-end",gap:8,height:140,padding:"0 4px"}}>
+        <div style={{display:"flex",alignItems:"flex-end",gap:8,height:130,padding:"0 4px"}}>
           {data.map(d=>(
             <div key={d.name} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,height:"100%",justifyContent:"flex-end"}}>
               {d.value>0 && <span style={{color:"#fff",fontSize:9,fontWeight:600}}>{fmtK(d.value)}</span>}
-              <div style={{width:"100%",borderRadius:"5px 5px 0 0",background:d.fill,height:`${Math.max(d.value>0?(d.value/max)*100:0,4)}%`,minHeight:d.value>0?6:0,transition:"height .5s"}}/>
+              <div style={{width:"100%",borderRadius:"5px 5px 0 0",background:d.fill,height:`${Math.max(d.value>0?(d.value/max)*100:0,d.value>0?4:0)}%`,transition:"height .5s"}}/>
               <span style={{color:"#64748b",fontSize:9,textAlign:"center"}}>{d.name}</span>
             </div>
           ))}
@@ -183,12 +177,12 @@
     };
     const Donut = ({ data }) => {
       const total = data.reduce((s,d)=>s+d.value,0)||1;
-      let cum = 0; const r=50,cx=65,cy=65,c=2*Math.PI*r;
+      let cum=0; const r=50,cx=65,cy=65,c=2*Math.PI*r;
       return (
         <svg viewBox="0 0 130 130" width={120} height={120}>
           <circle cx={cx} cy={cy} r={r} fill="none" stroke="#1a2740" strokeWidth={18}/>
           {data.map((d,i)=>{
-            const dash=(d.value/total)*c, gap=c-dash, rot=(cum/total)*360-90;
+            const dash=(d.value/total)*c,gap=c-dash,rot=(cum/total)*360-90;
             cum+=d.value;
             return <circle key={i} cx={cx} cy={cy} r={r} fill="none" stroke={COLORS[d.name]||"#64748b"} strokeWidth={18} strokeDasharray={`${dash} ${gap}`} transform={`rotate(${rot} ${cx} ${cy})`}/>;
           })}
@@ -196,24 +190,25 @@
       );
     };
 
-    /* ── Auth ───────────────────────────────── */
+    /* ══════════════ SCREENS ══════════════ */
+
+    /* ── Auth ── */
     function AuthScreen({ onAuth }) {
-      const [mode, setMode] = useState("login");
-      const [email, setEmail] = useState("");
-      const [pass, setPass]   = useState("");
-      const [msg, setMsg]     = useState("");
-      const [busy, setBusy]   = useState(false);
+      const [mode,setMode]=useState("login");
+      const [email,setEmail]=useState("");
+      const [pass,setPass]=useState("");
+      const [msg,setMsg]=useState("");
+      const [busy,setBusy]=useState(false);
 
       const go = async () => {
-        if (!email||!pass) return;
-        setBusy(true); setMsg("");
+        if (!email||!pass) return; setBusy(true); setMsg("");
         try {
           if (mode==="login") {
-            const d = await sb.auth("token?grant_type=password",{email,password:pass});
-            if (d.access_token) onAuth(d.access_token, d.user);
+            const d=await sb.auth("token?grant_type=password",{email,password:pass});
+            if (d.access_token) onAuth(d.access_token,d.user);
             else setMsg(d.error_description||"Invalid credentials");
           } else {
-            const d = await sb.auth("signup",{email,password:pass});
+            const d=await sb.auth("signup",{email,password:pass});
             if (d.id) { setMode("login"); setMsg("✅ Account created! Please sign in."); }
             else setMsg(d.error_description||d.msg||"Sign up failed");
           }
@@ -230,7 +225,6 @@
             <h1 style={{color:"#fff",fontSize:28,fontWeight:800,margin:"0 0 4px"}}>SmartWallet</h1>
             <p style={{color:"#64748b",fontSize:13,margin:0}}>Personal Money Manager · LKR</p>
           </div>
-
           <div style={{display:"flex",background:"#121c30",borderRadius:16,padding:4,marginBottom:20}}>
             {["login","signup"].map(m=>(
               <button key={m} onClick={()=>setMode(m)} style={{flex:1,padding:"10px 0",borderRadius:12,fontSize:14,fontWeight:600,border:"none",cursor:"pointer",fontFamily:"Outfit,sans-serif",background:mode===m?"#10b981":"transparent",color:mode===m?"#fff":"#64748b",transition:"all .2s"}}>
@@ -238,13 +232,7 @@
               </button>
             ))}
           </div>
-
-          {msg && (
-            <div style={{borderRadius:12,padding:12,marginBottom:14,fontSize:13,textAlign:"center",background:msg.startsWith("✅")?"#10b98115":"#ef444415",color:msg.startsWith("✅")?"#34d399":"#f87171"}}>
-              {msg}
-            </div>
-          )}
-
+          {msg && <div style={{borderRadius:12,padding:12,marginBottom:14,fontSize:13,textAlign:"center",background:msg.startsWith("✅")?"#10b98115":"#ef444415",color:msg.startsWith("✅")?"#34d399":"#f87171"}}>{msg}</div>}
           <FInput label="Email" type="email" placeholder="you@email.com" value={email} onChange={e=>setEmail(e.target.value)}/>
           <FInput label="Password" type="password" placeholder="••••••••" value={pass} onChange={e=>setPass(e.target.value)}/>
           <Btn onClick={go} disabled={busy||!email||!pass}>{busy?"Please wait…":mode==="login"?"Sign In":"Create Account"}</Btn>
@@ -252,7 +240,7 @@
       );
     }
 
-    /* ── Dashboard ──────────────────────────── */
+    /* ── Dashboard ── */
     function Dashboard({ data }) {
       const tInc  = data.income.reduce((s,i)=>s+Number(i.amount),0);
       const tBill = data.bills.reduce((s,b)=>s+Number(b.amount||0),0);
@@ -260,44 +248,67 @@
       const budget= smartBudget(disp);
       const tSpent= data.transactions.reduce((s,t)=>s+Number(t.amount),0);
       const bal   = tInc-tBill-tSpent;
-      const byC   = {};
-      data.transactions.forEach(t=>{ byC[t.category]=(byC[t.category]||0)+Number(t.amount); });
+      const byC   = {}; data.transactions.forEach(t=>{ byC[t.category]=(byC[t.category]||0)+Number(t.amount); });
 
-      const td = new Date().getDate();
+      // Lending summary
+      const totalOwed = data.lendings.filter(l=>l.type==="lending"&&!l.settled).reduce((s,l)=>s+Number(l.amount)-Number(l.settled_amount),0);
+      const totalOwing= data.lendings.filter(l=>l.type==="borrowing"&&!l.settled).reduce((s,l)=>s+Number(l.amount)-Number(l.settled_amount),0);
+
+      const td = new Date().getDate(); const todayStr = today();
       const alerts = [];
       Object.entries(byC).forEach(([c,sp])=>{
-        if (!budget[c]) return;
-        const r=sp/budget[c].amount;
+        if (!budget[c]) return; const r=sp/budget[c].amount;
         if (r>=1) alerts.push({t:"r",m:`🔴 ${c} budget exceeded!`});
         else if (r>=0.8) alerts.push({t:"y",m:`⚠️ ${c} at ${Math.round(r*100)}% — watch this`});
       });
       data.bills.forEach(b=>{ if(b.due_day&&!b.paid&&b.due_day-td>=0&&b.due_day-td<=5) alerts.push({t:"b",m:`📅 ${b.bill_name} due on ${ord(b.due_day)}`}); });
+      data.lendings.filter(l=>!l.settled&&l.due_date&&l.due_date<=todayStr).forEach(l=>{
+        const isOver = l.due_date < todayStr;
+        alerts.push({t:"r",m:`${isOver?"🔴 OVERDUE":"📅 Due today"}: ${l.type==="lending"?"Lent to":"Borrowed from"} ${l.person_name} — ${fmt(Number(l.amount)-Number(l.settled_amount))}`});
+      });
 
-      const alertColor = t => t==="r"?"#f87171":t==="y"?"#fbbf24":"#60a5fa";
-      const alertBg    = t => t==="r"?"#ef444415":t==="y"?"#f59e0b15":"#3b82f615";
+      const aColor = t=>t==="r"?"#f87171":t==="y"?"#fbbf24":"#60a5fa";
+      const aBg    = t=>t==="r"?"#ef444415":t==="y"?"#f59e0b15":"#3b82f615";
 
       return (
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
           {/* Hero */}
           <div style={{borderRadius:24,padding:20,background:"linear-gradient(135deg,#064e3b,#065f46,#047857)",position:"relative",overflow:"hidden"}}>
             <div style={{position:"absolute",top:-28,right:-28,width:120,height:120,borderRadius:"50%",background:"rgba(255,255,255,.08)"}}/>
-            <p style={{color:"#a7f3d0",fontSize:11,margin:"0 0 4px",fontWeight:500}}>{MONTHS[CM()-1]} {CY()} Overview</p>
+            <p style={{color:"#a7f3d0",fontSize:11,margin:"0 0 2px",fontWeight:500}}>{MONTHS[CM()-1]} {CY()} Overview</p>
             <p style={{color:"rgba(255,255,255,.55)",fontSize:12,margin:0}}>Total Income</p>
             <h2 style={{color:"#fff",fontSize:34,fontWeight:800,margin:"2px 0 14px",fontFamily:"Outfit,sans-serif"}}>{fmtK(tInc)}</h2>
             <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
               {[["Bills",tBill,"#fca5a5"],["Spent",tSpent,"#fcd34d"],["Balance",bal,bal>=0?"#6ee7b7":"#fca5a5"]].map(([l,v,c])=>(
-                <div key={l}>
-                  <p style={{color:"rgba(167,243,208,.65)",fontSize:11,margin:"0 0 2px"}}>{l}</p>
-                  <p style={{color:c,fontWeight:700,fontSize:13,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmtK(v)}</p>
-                </div>
+                <div key={l}><p style={{color:"rgba(167,243,208,.65)",fontSize:11,margin:"0 0 1px"}}>{l}</p><p style={{color:c,fontWeight:700,fontSize:13,margin:0}}>{fmtK(v)}</p></div>
               ))}
             </div>
           </div>
 
+          {/* Lending summary */}
+          {(totalOwed > 0 || totalOwing > 0) && (
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+              {totalOwed>0 && (
+                <Card style={{padding:12,border:"1px solid #10b98133"}}>
+                  <p style={{color:"#6b7280",fontSize:10,margin:"0 0 2px"}}>Others Owe You</p>
+                  <p style={{color:"#34d399",fontWeight:700,fontSize:14,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmtK(totalOwed)}</p>
+                </Card>
+              )}
+              {totalOwing>0 && (
+                <Card style={{padding:12,border:"1px solid #ef444433"}}>
+                  <p style={{color:"#6b7280",fontSize:10,margin:"0 0 2px"}}>You Owe Others</p>
+                  <p style={{color:"#f87171",fontWeight:700,fontSize:14,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmtK(totalOwing)}</p>
+                </Card>
+              )}
+            </div>
+          )}
+
+          {/* Alerts */}
           {alerts.map((a,i)=>(
-            <div key={i} style={{borderRadius:12,padding:12,fontSize:12,fontWeight:500,background:alertBg(a.t),color:alertColor(a.t)}}>{a.m}</div>
+            <div key={i} style={{borderRadius:12,padding:12,fontSize:12,fontWeight:500,background:aBg(a.t),color:aColor(a.t)}}>{a.m}</div>
           ))}
 
+          {/* Budget bars */}
           {disp>0&&Object.keys(budget).length>0&&(
             <Card>
               <Row style={{justifyContent:"space-between",marginBottom:12}}>
@@ -321,38 +332,19 @@
             </Card>
           )}
 
-          {data.goals.length>0&&(
-            <Card>
-              <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 10px"}}>Savings Goals</p>
-              {data.goals.slice(0,3).map(g=>{
-                const pct=Math.min(Number(g.current_amount)/Number(g.target_amount),1);
-                return (
-                  <div key={g.id} style={{marginBottom:10}}>
-                    <Row style={{justifyContent:"space-between",marginBottom:4}}>
-                      <span style={{color:"#d1d5db",fontSize:11}}>{g.name}</span>
-                      <span style={{color:"#a3e635",fontSize:11}}>{Math.round(pct*100)}%</span>
-                    </Row>
-                    <div style={{background:"#1a2740",borderRadius:4,height:5,overflow:"hidden"}}>
-                      <div style={{height:"100%",borderRadius:4,width:`${pct*100}%`,background:"#84cc16"}}/>
-                    </div>
-                  </div>
-                );
-              })}
-            </Card>
-          )}
-
+          {/* Recent transactions */}
           <Card>
             <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 10px"}}>Recent Transactions</p>
             {data.transactions.length===0
               ? <p style={{color:"#374151",fontSize:13,textAlign:"center",padding:"14px 0"}}>No transactions yet this month</p>
-              : data.transactions.slice(0,6).map(t=>(
+              : data.transactions.slice(0,5).map(t=>(
                 <div key={t.id} style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #1a2740"}}>
                   <Row style={{gap:10}}>
                     <div style={{width:30,height:30,borderRadius:8,background:(COLORS[t.category]||"#10b981")+"22",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
                       <div style={{width:8,height:8,borderRadius:"50%",background:COLORS[t.category]||"#10b981"}}/>
                     </div>
                     <div>
-                      <p style={{color:"#fff",fontSize:12,margin:"0 0 2px",fontWeight:500}}>{t.category}</p>
+                      <p style={{color:"#fff",fontSize:12,margin:"0 0 1px",fontWeight:500}}>{t.category}</p>
                       <p style={{color:"#4b5563",fontSize:10,margin:0}}>{t.note||"—"} · {t.date}</p>
                     </div>
                   </Row>
@@ -365,13 +357,13 @@
       );
     }
 
-    /* ── Income ─────────────────────────────── */
+    /* ── Income ── */
     function IncomeScreen({ token, userId, data, onRefresh }) {
-      const [show, setShow] = useState(false);
-      const [form, setForm] = useState({source:"Salary",amount:"",note:"",date:today()});
-      const [busy, setBusy] = useState(false);
-      const total = data.income.reduce((s,i)=>s+Number(i.amount),0);
-      const bySrc = {}; data.income.forEach(i=>{ bySrc[i.source]=(bySrc[i.source]||0)+Number(i.amount); });
+      const [show,setShow]=useState(false);
+      const [form,setForm]=useState({source:"Salary",amount:"",note:"",date:today()});
+      const [busy,setBusy]=useState(false);
+      const total=data.income.reduce((s,i)=>s+Number(i.amount),0);
+      const bySrc={}; data.income.forEach(i=>{ bySrc[i.source]=(bySrc[i.source]||0)+Number(i.amount); });
 
       const add = async () => {
         if (!form.amount) return; setBusy(true);
@@ -399,11 +391,9 @@
             <Card key={i.id}>
               <Row style={{justifyContent:"space-between"}}>
                 <Row style={{gap:10}}>
-                  <div style={{width:38,height:38,borderRadius:12,background:"#10b98122",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                    <Ic n="up" size={17} color="#10b981"/>
-                  </div>
+                  <div style={{width:38,height:38,borderRadius:12,background:"#10b98122",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Ic n="up" size={17} color="#10b981"/></div>
                   <div>
-                    <p style={{color:"#fff",fontWeight:600,margin:"0 0 2px",fontSize:13}}>{fmt(i.amount)}</p>
+                    <p style={{color:"#fff",fontWeight:600,margin:"0 0 1px",fontSize:13}}>{fmt(i.amount)}</p>
                     <p style={{color:"#6b7280",fontSize:11,margin:0}}>{i.source} · {i.date}</p>
                     {i.note&&<p style={{color:"#4b5563",fontSize:10,margin:0}}>{i.note}</p>}
                   </div>
@@ -413,12 +403,9 @@
             </Card>
           ))}
           {data.income.length===0&&<p style={{color:"#374151",fontSize:13,textAlign:"center",padding:32}}>No income recorded this month</p>}
-
           {show&&(
             <Modal title="Add Income" onClose={()=>setShow(false)}>
-              <FSel label="Source" value={form.source} onChange={e=>setForm({...form,source:e.target.value})}>
-                {INC_SRC.map(s=><option key={s}>{s}</option>)}
-              </FSel>
+              <FSel label="Source" value={form.source} onChange={e=>setForm({...form,source:e.target.value})}>{INC_SRC.map(s=><option key={s}>{s}</option>)}</FSel>
               <FInput label="Amount (LKR)" type="number" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/>
               <FInput label="Note (optional)" placeholder="e.g. April salary" value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/>
               <FInput label="Date" type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
@@ -429,13 +416,13 @@
       );
     }
 
-    /* ── Bills ──────────────────────────────── */
+    /* ── Bills ── */
     function BillsScreen({ token, userId, data, onRefresh }) {
-      const [show, setShow] = useState(false);
-      const [form, setForm] = useState({bill_type:"Electricity",bill_name:"Electricity Bill",amount:"",due_day:""});
-      const [busy, setBusy] = useState(false);
-      const total = data.bills.reduce((s,b)=>s+Number(b.amount||0),0);
-      const paid  = data.bills.filter(b=>b.paid).reduce((s,b)=>s+Number(b.amount||0),0);
+      const [show,setShow]=useState(false);
+      const [form,setForm]=useState({bill_type:"Electricity",bill_name:"Electricity Bill",amount:"",due_day:""});
+      const [busy,setBusy]=useState(false);
+      const total=data.bills.reduce((s,b)=>s+Number(b.amount||0),0);
+      const paid =data.bills.filter(b=>b.paid).reduce((s,b)=>s+Number(b.amount||0),0);
 
       const add = async () => {
         setBusy(true);
@@ -463,7 +450,7 @@
                   {b.paid&&<Ic n="check" size={12} color="#fff"/>}
                 </button>
                 <div style={{flex:1,minWidth:0}}>
-                  <p style={{color:b.paid?"#6b7280":"#fff",fontSize:13,fontWeight:600,margin:"0 0 2px",textDecoration:b.paid?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.bill_name}</p>
+                  <p style={{color:b.paid?"#6b7280":"#fff",fontSize:13,fontWeight:600,margin:"0 0 1px",textDecoration:b.paid?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.bill_name}</p>
                   <p style={{color:"#4b5563",fontSize:10,margin:0}}>{b.bill_type}{b.due_day?` · Due: ${ord(b.due_day)}`:""}</p>
                 </div>
                 <p style={{color:"#fff",fontWeight:700,fontSize:13,margin:0,flexShrink:0}}>{b.amount?fmtK(b.amount):"—"}</p>
@@ -472,18 +459,13 @@
             </Card>
           ))}
           {data.bills.length===0&&<p style={{color:"#374151",fontSize:13,textAlign:"center",padding:32}}>No bills added this month</p>}
-
           {show&&(
             <Modal title="Add Bill" onClose={()=>setShow(false)}>
-              <FSel label="Bill Type" value={form.bill_type} onChange={e=>setForm({...form,bill_type:e.target.value,bill_name:BILL_DEF[e.target.value]||""})}>
-                {BILL_TYP.map(t=><option key={t}>{t}</option>)}
-              </FSel>
+              <FSel label="Bill Type" value={form.bill_type} onChange={e=>setForm({...form,bill_type:e.target.value,bill_name:BILL_DEF[e.target.value]||""})}>{BILL_TYP.map(t=><option key={t}>{t}</option>)}</FSel>
               <FInput label="Bill Name" value={form.bill_name} onChange={e=>setForm({...form,bill_name:e.target.value})}/>
               <FInput label="Amount (LKR)" type="number" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/>
               <FInput label="Due Day (1–31)" type="number" min="1" max="31" placeholder="e.g. 25" value={form.due_day} onChange={e=>setForm({...form,due_day:e.target.value})}/>
-              <div style={{borderRadius:12,padding:12,marginBottom:14,fontSize:12,color:"#60a5fa",background:"#3b82f615"}}>
-                💡 Leave amount blank now — update when you receive the bill.
-              </div>
+              <div style={{borderRadius:12,padding:12,marginBottom:14,fontSize:12,color:"#60a5fa",background:"#3b82f615"}}>💡 Leave amount blank — update when you receive the bill.</div>
               <Btn onClick={add} disabled={busy}>{busy?"Saving…":"Add Bill"}</Btn>
             </Modal>
           )}
@@ -491,12 +473,12 @@
       );
     }
 
-    /* ── Expenses ───────────────────────────── */
+    /* ── Expenses ── */
     function ExpensesScreen({ token, userId, data, onRefresh }) {
-      const [show, setShow] = useState(false);
-      const [form, setForm] = useState({category:"Food & Groceries",amount:"",note:"",date:today()});
-      const [busy, setBusy] = useState(false);
-      const total = data.transactions.reduce((s,t)=>s+Number(t.amount),0);
+      const [show,setShow]=useState(false);
+      const [form,setForm]=useState({category:"Food & Groceries",amount:"",note:"",date:today()});
+      const [busy,setBusy]=useState(false);
+      const total=data.transactions.reduce((s,t)=>s+Number(t.amount),0);
 
       const add = async () => {
         if (!form.amount) return; setBusy(true);
@@ -505,8 +487,8 @@
       };
       const del = async id => { await sb.del("transactions",token,id); onRefresh(); };
 
-      const byDate = {}; data.transactions.forEach(t=>{ if(!byDate[t.date]) byDate[t.date]=[]; byDate[t.date].push(t); });
-      const dates = Object.keys(byDate).sort().reverse();
+      const byDate={}; data.transactions.forEach(t=>{ if(!byDate[t.date]) byDate[t.date]=[]; byDate[t.date].push(t); });
+      const dates=Object.keys(byDate).sort().reverse();
 
       return (
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -527,7 +509,7 @@
                           <div style={{width:9,height:9,borderRadius:"50%",background:COLORS[t.category]||"#10b981"}}/>
                         </div>
                         <div>
-                          <p style={{color:"#fff",fontSize:13,fontWeight:600,margin:"0 0 2px"}}>{t.category}</p>
+                          <p style={{color:"#fff",fontSize:13,fontWeight:600,margin:"0 0 1px"}}>{t.category}</p>
                           {t.note&&<p style={{color:"#6b7280",fontSize:10,margin:0}}>{t.note}</p>}
                         </div>
                       </Row>
@@ -542,12 +524,9 @@
             </div>
           ))}
           {data.transactions.length===0&&<p style={{color:"#374151",fontSize:13,textAlign:"center",padding:32}}>No expenses recorded yet</p>}
-
           {show&&(
             <Modal title="Add Expense" onClose={()=>setShow(false)}>
-              <FSel label="Category" value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>
-                {EXP_CATS.map(c=><option key={c}>{c}</option>)}
-              </FSel>
+              <FSel label="Category" value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>{EXP_CATS.map(c=><option key={c}>{c}</option>)}</FSel>
               <FInput label="Amount (LKR)" type="number" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/>
               <FInput label="Note (optional)" placeholder="What was this for?" value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/>
               <FInput label="Date" type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
@@ -558,171 +537,297 @@
       );
     }
 
-    /* ── Goals ──────────────────────────────── */
-    function GoalsScreen({ token, userId, data, onRefresh }) {
-      const [showAdd, setShowAdd] = useState(false);
-      const [contrib, setContrib] = useState(null);
-      const [form, setForm]       = useState({name:"",target_amount:"",target_date:""});
-      const [camount, setCamount] = useState("");
-      const [busy, setBusy]       = useState(false);
+    /* ── Lend / Borrow ── */
+    function LendingScreen({ token, userId, data, onRefresh }) {
+      const [filter,setFilter]=useState("lending");
+      const [showAdd,setShowAdd]=useState(false);
+      const [settle,setSettle]=useState(null);
+      const [form,setForm]=useState({person_name:"",amount:"",note:"",date:today(),due_date:""});
+      const [sAmt,setSAmt]=useState("");
+      const [busy,setBusy]=useState(false);
 
-      const tInc = data.income.reduce((s,i)=>s+Number(i.amount),0);
-      const tBill= data.bills.reduce((s,b)=>s+Number(b.amount||0),0);
-      const tSp  = data.transactions.reduce((s,t)=>s+Number(t.amount),0);
-      const pot  = tInc-tBill-tSp;
-      const bud  = smartBudget(tInc-tBill);
-      const sug  = bud["Savings"]?.amount||0;
+      const all = data.lendings||[];
+      const totalOwed  = all.filter(l=>l.type==="lending"&&!l.settled).reduce((s,l)=>s+Number(l.amount)-Number(l.settled_amount),0);
+      const totalOwing = all.filter(l=>l.type==="borrowing"&&!l.settled).reduce((s,l)=>s+Number(l.amount)-Number(l.settled_amount),0);
+      const filtered   = all.filter(l=>l.type===filter);
+      const todayStr   = today();
 
-      const addGoal = async () => {
-        if (!form.name||!form.target_amount) return; setBusy(true);
-        await sb.ins("savings_goals",token,{user_id:userId,name:form.name,target_amount:parseFloat(form.target_amount),current_amount:0,monthly_contribution:sug||null,target_date:form.target_date||null});
-        setForm({name:"",target_amount:"",target_date:""}); setShowAdd(false); onRefresh(); setBusy(false);
+      const add = async () => {
+        if (!form.person_name||!form.amount) return; setBusy(true);
+        await sb.ins("lendings",token,{user_id:userId,type:filter,person_name:form.person_name,amount:parseFloat(form.amount),settled_amount:0,note:form.note,date:form.date,due_date:form.due_date||null,settled:false});
+        setForm({person_name:"",amount:"",note:"",date:today(),due_date:""}); setShowAdd(false); onRefresh(); setBusy(false);
       };
-      const addC = async g => {
-        if (!camount) return; setBusy(true);
-        await sb.upd("savings_goals",token,g.id,{current_amount:Number(g.current_amount)+parseFloat(camount)});
-        setCamount(""); setContrib(null); onRefresh(); setBusy(false);
+      const doSettle = async rec => {
+        if (!sAmt) return; setBusy(true);
+        const ns=Number(rec.settled_amount)+parseFloat(sAmt);
+        await sb.upd("lendings",token,rec.id,{settled_amount:ns,settled:ns>=Number(rec.amount)});
+        setSAmt(""); setSettle(null); onRefresh(); setBusy(false);
       };
-      const del = async id => { await sb.del("savings_goals",token,id); onRefresh(); };
+      const del = async id => { await sb.del("lendings",token,id); onRefresh(); };
+
+      const isOverdue = l => l.due_date&&!l.settled&&l.due_date<todayStr;
+      const isDueToday= l => l.due_date&&!l.settled&&l.due_date===todayStr;
 
       return (
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          <Card>
-            <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 4px"}}>This Month's Savings Potential</p>
-            <h2 style={{color:pot>=0?"#a3e635":"#f87171",fontSize:26,fontWeight:800,margin:"0 0 4px",fontFamily:"Outfit,sans-serif"}}>
-              {pot>=0?"":"-"}{fmt(Math.abs(pot))}
-            </h2>
-            {sug>0&&<p style={{color:"#6b7280",fontSize:12,margin:0}}>Suggested: <span style={{color:"#10b981"}}>{fmt(sug)}/month</span></p>}
-          </Card>
-          <Btn onClick={()=>setShowAdd(true)}>+ New Savings Goal</Btn>
+          {/* Summary */}
+          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+            <Card style={{padding:12,border:"1px solid #10b98122"}}>
+              <p style={{color:"#9ca3af",fontSize:10,margin:"0 0 2px"}}>Others Owe You</p>
+              <p style={{color:"#34d399",fontWeight:700,fontSize:15,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmt(totalOwed)}</p>
+            </Card>
+            <Card style={{padding:12,border:"1px solid #ef444422"}}>
+              <p style={{color:"#9ca3af",fontSize:10,margin:"0 0 2px"}}>You Owe Others</p>
+              <p style={{color:"#f87171",fontWeight:700,fontSize:15,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmt(totalOwing)}</p>
+            </Card>
+          </div>
 
-          {data.goals.map(g=>{
-            const pct=Math.min(Number(g.current_amount)/Number(g.target_amount),1);
-            const rem=Number(g.target_amount)-Number(g.current_amount);
-            const ml=g.monthly_contribution>0?Math.ceil(rem/Number(g.monthly_contribution)):null;
+          <SubTabs options={[["lending","💰 You Lent"],["borrowing","🤝 You Borrowed"]]} value={filter} onChange={setFilter}/>
+
+          <Btn onClick={()=>setShowAdd(true)}>+ Add {filter==="lending"?"Lending":"Borrowing"}</Btn>
+
+          {filtered.map(l=>{
+            const remaining=Number(l.amount)-Number(l.settled_amount);
+            const pct=Number(l.settled_amount)/Number(l.amount);
+            const overdue=isOverdue(l), dueToday=isDueToday(l);
             return (
-              <Card key={g.id}>
-                <Row style={{justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
-                  <div>
-                    <p style={{color:"#fff",fontWeight:600,margin:"0 0 2px"}}>{g.name}</p>
-                    <p style={{color:"#6b7280",fontSize:11,margin:"0 0 2px"}}>Target: {fmt(g.target_amount)}</p>
-                    {ml&&ml>0&&<p style={{color:"#4b5563",fontSize:10,margin:0}}>~{ml} month{ml>1?"s":""} to go</p>}
+              <Card key={l.id}>
+                <Row style={{justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
+                  <div style={{flex:1,minWidth:0}}>
+                    <Row style={{gap:6,marginBottom:3,flexWrap:"wrap"}}>
+                      <p style={{color:"#fff",fontWeight:700,fontSize:14,margin:0}}>{l.person_name}</p>
+                      {l.settled   && <Tag label="SETTLED"  color="#10b981" bg="#10b98122"/>}
+                      {overdue     && <Tag label="OVERDUE"  color="#f87171" bg="#ef444422"/>}
+                      {dueToday    && <Tag label="DUE TODAY" color="#fbbf24" bg="#f59e0b22"/>}
+                    </Row>
+                    <p style={{color:"#6b7280",fontSize:10,margin:"0 0 1px"}}>{l.date}{l.due_date?` · Due: ${l.due_date}`:""}</p>
+                    {l.note&&<p style={{color:"#4b5563",fontSize:10,margin:0}}>{l.note}</p>}
                   </div>
-                  <DelBtn onClick={()=>del(g.id)}/>
+                  <DelBtn onClick={()=>del(l.id)}/>
                 </Row>
-                <div style={{background:"#1a2740",borderRadius:6,height:8,overflow:"hidden",marginBottom:4}}>
-                  <div style={{height:"100%",borderRadius:6,width:`${pct*100}%`,background:"linear-gradient(90deg,#84cc16,#65a30d)",transition:"width .5s"}}/>
-                </div>
-                <Row style={{justifyContent:"space-between",marginBottom:12}}>
-                  <span style={{color:"#6b7280",fontSize:11}}>Saved: {fmt(g.current_amount)}</span>
-                  <span style={{color:"#a3e635",fontWeight:600,fontSize:11}}>{Math.round(pct*100)}%</span>
+
+                <Row style={{justifyContent:"space-between",marginBottom:Number(l.settled_amount)>0?8:10}}>
+                  <p style={{color:filter==="lending"?"#34d399":"#f87171",fontWeight:700,fontSize:15,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmt(l.amount)}</p>
+                  {Number(l.settled_amount)>0&&!l.settled&&(
+                    <p style={{color:"#9ca3af",fontSize:11,margin:0}}>Remaining: <span style={{color:"#fff",fontWeight:600}}>{fmt(remaining)}</span></p>
+                  )}
                 </Row>
-                <button onClick={()=>setContrib(g)} style={{width:"100%",borderRadius:10,padding:"8px 0",fontSize:12,fontWeight:600,border:"1px solid #10b98133",background:"#10b98115",color:"#10b981",cursor:"pointer",fontFamily:"Outfit,sans-serif"}}>+ Add Savings</button>
+
+                {Number(l.settled_amount)>0&&(
+                  <div style={{marginBottom:10}}>
+                    <div style={{background:"#1a2740",borderRadius:4,height:5,overflow:"hidden"}}>
+                      <div style={{height:"100%",borderRadius:4,width:`${Math.min(pct,1)*100}%`,background:"#10b981",transition:"width .5s"}}/>
+                    </div>
+                    <p style={{color:"#6b7280",fontSize:10,margin:"4px 0 0"}}>Settled: {fmt(l.settled_amount)}</p>
+                  </div>
+                )}
+
+                {!l.settled&&(
+                  <button onClick={()=>setSettle(l)} style={{width:"100%",borderRadius:10,padding:"7px 0",fontSize:12,fontWeight:600,border:"1px solid #10b98133",background:"#10b98115",color:"#10b981",cursor:"pointer",fontFamily:"Outfit,sans-serif"}}>
+                    ✓ Record Settlement
+                  </button>
+                )}
               </Card>
             );
           })}
-          {data.goals.length===0&&<p style={{color:"#374151",fontSize:13,textAlign:"center",padding:32}}>No savings goals yet</p>}
+          {filtered.length===0&&<p style={{color:"#374151",fontSize:13,textAlign:"center",padding:32}}>No {filter==="lending"?"lendings":"borrowings"} recorded</p>}
+
+          {showAdd&&(
+            <Modal title={`Add ${filter==="lending"?"Lending":"Borrowing"}`} onClose={()=>setShowAdd(false)}>
+              <FInput label={filter==="lending"?"Lent To (Name)":"Borrowed From (Name)"} placeholder="Person's name" value={form.person_name} onChange={e=>setForm({...form,person_name:e.target.value})}/>
+              <FInput label="Amount (LKR)" type="number" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/>
+              <FInput label="Note (optional)" placeholder="What was it for?" value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/>
+              <FInput label="Date" type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
+              <FInput label="Due / Return Date (optional)" type="date" value={form.due_date} onChange={e=>setForm({...form,due_date:e.target.value})}/>
+              <Btn onClick={add} disabled={busy||!form.person_name||!form.amount}>{busy?"Saving…":"Add Record"}</Btn>
+            </Modal>
+          )}
+
+          {settle&&(
+            <Modal title={`Settle: ${settle.person_name}`} onClose={()=>setSettle(null)}>
+              <div style={{borderRadius:12,padding:14,marginBottom:14,background:"#1a2740"}}>
+                {[["Total",settle.amount,"#fff"],["Already Settled",settle.settled_amount,"#34d399"],["Remaining",Number(settle.amount)-Number(settle.settled_amount),"#f87171"]].map(([l,v,c])=>(
+                  <Row key={l} style={{justifyContent:"space-between",marginBottom:4}}>
+                    <span style={{color:"#9ca3af",fontSize:12}}>{l}</span>
+                    <span style={{color:c,fontWeight:600,fontSize:12}}>{fmt(v)}</span>
+                  </Row>
+                ))}
+              </div>
+              <FInput label="Settlement Amount (LKR)" type="number" inputMode="decimal" placeholder="0.00" value={sAmt} onChange={e=>setSAmt(e.target.value)}/>
+              <div style={{borderRadius:12,padding:10,marginBottom:14,fontSize:11,color:"#60a5fa",background:"#3b82f615"}}>
+                💡 Enter full remaining amount to fully settle, or partial amount for part-payment.
+              </div>
+              <Btn onClick={()=>doSettle(settle)} disabled={busy||!sAmt}>{busy?"Saving…":"Record Settlement"}</Btn>
+            </Modal>
+          )}
+        </div>
+      );
+    }
+
+    /* ── More (Goals + Reports) ── */
+    function MoreScreen({ token, userId, data, onRefresh }) {
+      const [section,setSection]=useState("goals");
+
+      /* Goals logic */
+      const tInc=data.income.reduce((s,i)=>s+Number(i.amount),0);
+      const tBill=data.bills.reduce((s,b)=>s+Number(b.amount||0),0);
+      const tSp=data.transactions.reduce((s,t)=>s+Number(t.amount),0);
+      const pot=tInc-tBill-tSp;
+      const bud=smartBudget(tInc-tBill);
+      const sug=bud["Savings"]?.amount||0;
+
+      const [showAdd,setShowAdd]=useState(false);
+      const [contrib,setContrib]=useState(null);
+      const [gForm,setGForm]=useState({name:"",target_amount:"",target_date:""});
+      const [cAmt,setCAmt]=useState("");
+      const [busy,setBusy]=useState(false);
+
+      const addGoal = async () => {
+        if (!gForm.name||!gForm.target_amount) return; setBusy(true);
+        await sb.ins("savings_goals",token,{user_id:userId,name:gForm.name,target_amount:parseFloat(gForm.target_amount),current_amount:0,monthly_contribution:sug||null,target_date:gForm.target_date||null});
+        setGForm({name:"",target_amount:"",target_date:""}); setShowAdd(false); onRefresh(); setBusy(false);
+      };
+      const addC = async g => {
+        if (!cAmt) return; setBusy(true);
+        await sb.upd("savings_goals",token,g.id,{current_amount:Number(g.current_amount)+parseFloat(cAmt)});
+        setCAmt(""); setContrib(null); onRefresh(); setBusy(false);
+      };
+      const delG = async id => { await sb.del("savings_goals",token,id); onRefresh(); };
+
+      /* Reports logic */
+      const tInc2=tInc, tBill2=tBill, tSp2=tSp, saved=Math.max(tInc-tBill-tSp,0);
+      const byC={}; data.transactions.forEach(t=>{ byC[t.category]=(byC[t.category]||0)+Number(t.amount); });
+      const pie=Object.entries(byC).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
+      const bars=[{name:"Income",value:tInc2,fill:"#10b981"},{name:"Bills",value:tBill2,fill:"#ef4444"},{name:"Expenses",value:tSp2,fill:"#f59e0b"},{name:"Saved",value:saved,fill:"#84cc16"}];
+      const bySrc={}; data.income.forEach(i=>{ bySrc[i.source]=(bySrc[i.source]||0)+Number(i.amount); });
+
+      return (
+        <div style={{display:"flex",flexDirection:"column",gap:12}}>
+          <SubTabs options={[["goals","🎯 Goals"],["reports","📊 Reports"]]} value={section} onChange={setSection}/>
+
+          {section==="goals" ? (
+            <>
+              <Card>
+                <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 4px"}}>This Month's Savings Potential</p>
+                <h2 style={{color:pot>=0?"#a3e635":"#f87171",fontSize:26,fontWeight:800,margin:"0 0 4px",fontFamily:"Outfit,sans-serif"}}>{pot>=0?"":"-"}{fmt(Math.abs(pot))}</h2>
+                {sug>0&&<p style={{color:"#6b7280",fontSize:12,margin:0}}>Suggested: <span style={{color:"#10b981"}}>{fmt(sug)}/month</span></p>}
+              </Card>
+              <Btn onClick={()=>setShowAdd(true)}>+ New Savings Goal</Btn>
+              {data.goals.map(g=>{
+                const pct=Math.min(Number(g.current_amount)/Number(g.target_amount),1);
+                const rem=Number(g.target_amount)-Number(g.current_amount);
+                const ml=g.monthly_contribution>0?Math.ceil(rem/Number(g.monthly_contribution)):null;
+                return (
+                  <Card key={g.id}>
+                    <Row style={{justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+                      <div>
+                        <p style={{color:"#fff",fontWeight:600,margin:"0 0 2px"}}>{g.name}</p>
+                        <p style={{color:"#6b7280",fontSize:11,margin:"0 0 1px"}}>Target: {fmt(g.target_amount)}</p>
+                        {ml&&ml>0&&<p style={{color:"#4b5563",fontSize:10,margin:0}}>~{ml} month{ml>1?"s":""} to go</p>}
+                      </div>
+                      <DelBtn onClick={()=>delG(g.id)}/>
+                    </Row>
+                    <div style={{background:"#1a2740",borderRadius:6,height:8,overflow:"hidden",marginBottom:4}}>
+                      <div style={{height:"100%",borderRadius:6,width:`${pct*100}%`,background:"linear-gradient(90deg,#84cc16,#65a30d)",transition:"width .5s"}}/>
+                    </div>
+                    <Row style={{justifyContent:"space-between",marginBottom:10}}>
+                      <span style={{color:"#6b7280",fontSize:11}}>Saved: {fmt(g.current_amount)}</span>
+                      <span style={{color:"#a3e635",fontWeight:600,fontSize:11}}>{Math.round(pct*100)}%</span>
+                    </Row>
+                    <button onClick={()=>setContrib(g)} style={{width:"100%",borderRadius:10,padding:"8px 0",fontSize:12,fontWeight:600,border:"1px solid #10b98133",background:"#10b98115",color:"#10b981",cursor:"pointer",fontFamily:"Outfit,sans-serif"}}>+ Add Savings</button>
+                  </Card>
+                );
+              })}
+              {data.goals.length===0&&<p style={{color:"#374151",fontSize:13,textAlign:"center",padding:32}}>No savings goals yet</p>}
+            </>
+          ) : (
+            <>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
+                {[["Income",tInc2,"#34d399"],["Bills",tBill2,"#f87171"],["Spent",tSp2,"#fbbf24"],["Saved",saved,"#a3e635"]].map(([l,v,c])=>(
+                  <Card key={l} style={{padding:12}}>
+                    <p style={{color:"#6b7280",fontSize:10,margin:"0 0 2px"}}>{l}</p>
+                    <p style={{color:c,fontWeight:700,fontSize:14,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmtK(v)}</p>
+                  </Card>
+                ))}
+              </div>
+              <Card>
+                <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 14px"}}>Monthly Overview</p>
+                <BarChart data={bars}/>
+              </Card>
+              {pie.length>0&&(
+                <Card>
+                  <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 10px"}}>Expenses by Category</p>
+                  <Row style={{alignItems:"center"}}>
+                    <Donut data={pie}/>
+                    <div style={{flex:1,paddingLeft:10,display:"flex",flexDirection:"column",gap:5}}>
+                      {pie.map(d=>(
+                        <Row key={d.name} style={{gap:6}}>
+                          <div style={{width:7,height:7,borderRadius:"50%",background:COLORS[d.name]||"#64748b",flexShrink:0}}/>
+                          <span style={{color:"#9ca3af",fontSize:10,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</span>
+                          <span style={{color:"#d1d5db",fontSize:10}}>{fmtK(d.value)}</span>
+                        </Row>
+                      ))}
+                    </div>
+                  </Row>
+                </Card>
+              )}
+              <Card>
+                <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 10px"}}>Income Breakdown</p>
+                {Object.entries(bySrc).map(([s,a])=>(
+                  <Row key={s} style={{justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #1a2740"}}>
+                    <span style={{color:"#d1d5db",fontSize:13}}>{s}</span>
+                    <span style={{color:"#10b981",fontWeight:600,fontSize:13}}>{fmt(a)}</span>
+                  </Row>
+                ))}
+                {!Object.keys(bySrc).length&&<p style={{color:"#374151",fontSize:13,textAlign:"center",padding:16}}>No income recorded</p>}
+              </Card>
+            </>
+          )}
 
           {showAdd&&(
             <Modal title="New Savings Goal" onClose={()=>setShowAdd(false)}>
-              <FInput label="Goal Name" placeholder="e.g. Emergency Fund, School Fees…" value={form.name} onChange={e=>setForm({...form,name:e.target.value})}/>
-              <FInput label="Target Amount (LKR)" type="number" inputMode="decimal" placeholder="100000" value={form.target_amount} onChange={e=>setForm({...form,target_amount:e.target.value})}/>
-              <FInput label="Target Date (optional)" type="date" value={form.target_date} onChange={e=>setForm({...form,target_date:e.target.value})}/>
-              {sug>0&&<div style={{borderRadius:12,padding:12,marginBottom:14,fontSize:12,color:"#10b981",background:"#10b98115"}}>💡 App will assign {fmt(sug)}/month based on your income</div>}
-              <Btn onClick={addGoal} disabled={busy||!form.name||!form.target_amount}>{busy?"Saving…":"Create Goal"}</Btn>
+              <FInput label="Goal Name" placeholder="e.g. Emergency Fund, School Fees…" value={gForm.name} onChange={e=>setGForm({...gForm,name:e.target.value})}/>
+              <FInput label="Target Amount (LKR)" type="number" inputMode="decimal" placeholder="100000" value={gForm.target_amount} onChange={e=>setGForm({...gForm,target_amount:e.target.value})}/>
+              <FInput label="Target Date (optional)" type="date" value={gForm.target_date} onChange={e=>setGForm({...gForm,target_date:e.target.value})}/>
+              {sug>0&&<div style={{borderRadius:12,padding:12,marginBottom:14,fontSize:12,color:"#10b981",background:"#10b98115"}}>💡 App will assign {fmt(sug)}/month as your contribution</div>}
+              <Btn onClick={addGoal} disabled={busy||!gForm.name||!gForm.target_amount}>{busy?"Saving…":"Create Goal"}</Btn>
             </Modal>
           )}
           {contrib&&(
             <Modal title={`Add to: ${contrib.name}`} onClose={()=>setContrib(null)}>
-              <FInput label="Amount (LKR)" type="number" inputMode="decimal" placeholder="0.00" value={camount} onChange={e=>setCamount(e.target.value)}/>
-              <Btn onClick={()=>addC(contrib)} disabled={busy||!camount}>{busy?"Saving…":"Add to Goal"}</Btn>
+              <FInput label="Amount (LKR)" type="number" inputMode="decimal" placeholder="0.00" value={cAmt} onChange={e=>setCAmt(e.target.value)}/>
+              <Btn onClick={()=>addC(contrib)} disabled={busy||!cAmt}>{busy?"Saving…":"Add to Goal"}</Btn>
             </Modal>
           )}
         </div>
       );
     }
 
-    /* ── Reports ────────────────────────────── */
-    function ReportsScreen({ data }) {
-      const tInc  = data.income.reduce((s,i)=>s+Number(i.amount),0);
-      const tBill = data.bills.reduce((s,b)=>s+Number(b.amount||0),0);
-      const tSp   = data.transactions.reduce((s,t)=>s+Number(t.amount),0);
-      const saved = Math.max(tInc-tBill-tSp,0);
-      const byC   = {}; data.transactions.forEach(t=>{ byC[t.category]=(byC[t.category]||0)+Number(t.amount); });
-      const pie   = Object.entries(byC).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
-      const bars  = [{name:"Income",value:tInc,fill:"#10b981"},{name:"Bills",value:tBill,fill:"#ef4444"},{name:"Expenses",value:tSp,fill:"#f59e0b"},{name:"Saved",value:saved,fill:"#84cc16"}];
-      const bySrc = {}; data.income.forEach(i=>{ bySrc[i.source]=(bySrc[i.source]||0)+Number(i.amount); });
-
-      return (
-        <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-            {[["Income",tInc,"#34d399"],["Bills",tBill,"#f87171"],["Spent",tSp,"#fbbf24"],["Saved",saved,"#a3e635"]].map(([l,v,c])=>(
-              <Card key={l} style={{padding:12}}>
-                <p style={{color:"#6b7280",fontSize:10,margin:"0 0 2px"}}>{l}</p>
-                <p style={{color:c,fontWeight:700,fontSize:14,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmtK(v)}</p>
-              </Card>
-            ))}
-          </div>
-          <Card>
-            <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 14px"}}>Monthly Overview</p>
-            <BarChart data={bars}/>
-          </Card>
-          {pie.length>0&&(
-            <Card>
-              <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 10px"}}>Expenses by Category</p>
-              <Row style={{alignItems:"center"}}>
-                <Donut data={pie}/>
-                <div style={{flex:1,paddingLeft:10,display:"flex",flexDirection:"column",gap:5}}>
-                  {pie.map(d=>(
-                    <Row key={d.name} style={{gap:6}}>
-                      <div style={{width:7,height:7,borderRadius:"50%",background:COLORS[d.name]||"#64748b",flexShrink:0}}/>
-                      <span style={{color:"#9ca3af",fontSize:10,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</span>
-                      <span style={{color:"#d1d5db",fontSize:10}}>{fmtK(d.value)}</span>
-                    </Row>
-                  ))}
-                </div>
-              </Row>
-            </Card>
-          )}
-          <Card>
-            <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 10px"}}>Income Breakdown</p>
-            {Object.entries(bySrc).map(([s,a])=>(
-              <Row key={s} style={{justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #1a2740"}}>
-                <span style={{color:"#d1d5db",fontSize:13}}>{s}</span>
-                <span style={{color:"#10b981",fontWeight:600,fontSize:13}}>{fmt(a)}</span>
-              </Row>
-            ))}
-            {!Object.keys(bySrc).length&&<p style={{color:"#374151",fontSize:13,textAlign:"center",padding:16}}>No income recorded</p>}
-          </Card>
-        </div>
-      );
-    }
-
-    /* ── Main App ────────────────────────────── */
+    /* ── Main App ── */
     function App() {
-      const [token, setToken] = useState(null);
-      const [user, setUser]   = useState(null);
-      const [tab, setTab]     = useState("home");
-      const [data, setData]   = useState({income:[],bills:[],transactions:[],goals:[]});
-      const [loading, setLoading] = useState(false);
-      const [error, setError] = useState("");
+      const [token,setToken]=useState(null);
+      const [user,setUser]=useState(null);
+      const [tab,setTab]=useState("home");
+      const [data,setData]=useState({income:[],bills:[],transactions:[],goals:[],lendings:[]});
+      const [loading,setLoading]=useState(false);
+      const [error,setError]=useState("");
 
-      const load = useCallback(async (tok, uid) => {
-        if (!tok||!uid) return;
-        setLoading(true); setError("");
+      const load = useCallback(async (tok,uid) => {
+        if (!tok||!uid) return; setLoading(true); setError("");
         try {
           const mq=`user_id=eq.${uid}&month=eq.${CM()}&year=eq.${CY()}`;
-          const [income,bills,transactions,goals] = await Promise.all([
+          const [income,bills,transactions,goals,lendings]=await Promise.all([
             sb.get("income_entries",tok,mq), sb.get("mandatory_bills",tok,mq),
             sb.get("transactions",tok,mq),   sb.get("savings_goals",tok,`user_id=eq.${uid}`),
+            sb.get("lendings",tok,`user_id=eq.${uid}`),
           ]);
-          setData({income,bills,transactions,goals});
-        } catch { setError("Failed to load. Check your connection."); }
+          setData({income,bills,transactions,goals,lendings});
+        } catch { setError("Failed to load. Check connection."); }
         setLoading(false);
-      }, []);
+      },[]);
 
-      const handleAuth = (tok, usr) => { setToken(tok); setUser(usr); load(tok, usr.id); };
-      const refresh    = () => load(token, user?.id);
+      const handleAuth = (tok,usr) => { setToken(tok); setUser(usr); load(tok,usr.id); };
+      const refresh    = () => load(token,user?.id);
       const logout     = async () => {
         try { await fetch(`${SB_URL}/auth/v1/logout`,{method:"POST",headers:{apikey:SB_KEY,Authorization:`Bearer ${token}`}}); } catch {}
         setToken(null); setUser(null);
@@ -730,22 +835,22 @@
 
       if (!token) return <AuthScreen onAuth={handleAuth}/>;
 
-      const TABS = [
+      const TABS=[
         {id:"home",    ic:"home",    lb:"Home"},
         {id:"income",  ic:"dollar",  lb:"Income"},
         {id:"bills",   ic:"receipt", lb:"Bills"},
         {id:"expenses",ic:"wallet",  lb:"Expenses"},
-        {id:"goals",   ic:"target",  lb:"Goals"},
-        {id:"reports", ic:"chart",   lb:"Reports"},
+        {id:"lend",    ic:"swap",    lb:"Lend"},
+        {id:"more",    ic:"dots",    lb:"More"},
       ];
-      const TITLES = {home:"Dashboard",income:"Income",bills:"Bills",expenses:"Expenses",goals:"Savings Goals",reports:"Reports"};
-      const SCREENS = {
+      const TITLES={home:"Dashboard",income:"Income",bills:"Bills",expenses:"Expenses",lend:"Lend / Borrow",more:"More"};
+      const SCREENS={
         home:     <Dashboard data={data}/>,
         income:   <IncomeScreen   token={token} userId={user?.id} data={data} onRefresh={refresh}/>,
         bills:    <BillsScreen    token={token} userId={user?.id} data={data} onRefresh={refresh}/>,
         expenses: <ExpensesScreen token={token} userId={user?.id} data={data} onRefresh={refresh}/>,
-        goals:    <GoalsScreen    token={token} userId={user?.id} data={data} onRefresh={refresh}/>,
-        reports:  <ReportsScreen  data={data}/>,
+        lend:     <LendingScreen  token={token} userId={user?.id} data={data} onRefresh={refresh}/>,
+        more:     <MoreScreen     token={token} userId={user?.id} data={data} onRefresh={refresh}/>,
       };
 
       return (
@@ -768,7 +873,6 @@
 
           {error&&<div style={{margin:"8px 16px",borderRadius:12,padding:12,fontSize:12,color:"#f87171",background:"#ef444415"}}>{error}</div>}
 
-          {/* Content */}
           <div style={{padding:"14px 14px 110px"}}>
             {loading&&!data.income.length
               ? <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"80px 0",gap:12}}>
@@ -783,7 +887,7 @@
           <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#0c1525",borderTop:"1px solid #1a2740",zIndex:40,paddingBottom:"env(safe-area-inset-bottom,4px)"}}>
             <div style={{display:"flex"}}>
               {TABS.map(({id,ic,lb})=>(
-                <button key={id} onClick={()=>setTab(id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"9px 0",border:"none",background:"transparent",cursor:"pointer",color:tab===id?"#10b981":"#374151",transition:"color .2s",fontFamily:"Outfit,sans-serif"}}>
+                <button key={id} onClick={()=>setTab(id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"9px 0",border:"none",background:"transparent",cursor:"pointer",color:tab===id?"#10b981":"#374155",transition:"color .2s",fontFamily:"Outfit,sans-serif"}}>
                   <Ic n={ic} size={19} color={tab===id?"#10b981":"#374155"}/>
                   <span style={{fontSize:9,fontWeight:tab===id?600:400}}>{lb}</span>
                 </button>
@@ -796,13 +900,10 @@
 
     ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
   </script>
-
   <script>
     if ("serviceWorker" in navigator) {
       window.addEventListener("load", () => {
-        navigator.serviceWorker.register("sw.js")
-          .then(r => console.log("SW ready:", r.scope))
-          .catch(e => console.warn("SW failed:", e));
+        navigator.serviceWorker.register("sw.js").catch(e=>console.warn("SW:",e));
       });
     }
   </script>
