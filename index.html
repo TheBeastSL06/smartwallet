@@ -27,7 +27,7 @@
 <body>
   <div id="root"></div>
   <script type="text/babel">
-    const { useState, useEffect, useCallback } = React;
+    const { useState, useCallback } = React;
 
     const SB_URL = "https://rvlvbrgysnnuxmyozuuw.supabase.co";
     const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InJ2bHZicmd5c25udXhteW96dXV3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODA3NDMzMTMsImV4cCI6MjA5NjMxOTMxM30.O6Cm77n1eZL5NGXDNBvAdQ_TcuCCa-ppzH9z4iV7JN4";
@@ -39,6 +39,7 @@
     const BILL_DEF = {"Loan Installment":"Loan Installment","Credit Card":"Credit Card Bill","Electricity":"Electricity Bill","Router/Internet":"Router / Internet Bill","Telephone":"Telephone Bill","Water":"Water Bill","Custom":"Custom Bill"};
     const COLORS   = {"Food & Groceries":"#10b981","Transport":"#3b82f6","Family & Kids":"#f59e0b","Health":"#ef4444","Education":"#8b5cf6","Leisure":"#06b6d4","Savings":"#84cc16","Buffer":"#64748b","Emergency":"#f97316","Other":"#9ca3af"};
 
+    /* ── SVG Icons ── */
     const SVG = {
       home:    `<path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>`,
       dollar:  `<line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/>`,
@@ -46,15 +47,12 @@
       wallet:  `<path d="M20 12V8H6a2 2 0 0 1-2-2c0-1.1.9-2 2-2h12v4"/><path d="M4 6v12c0 1.1.9 2 2 2h14v-4"/><circle cx="16" cy="12" r="2"/>`,
       swap:    `<path d="M7 16V4m0 0L3 8m4-4l4 4M17 8v12m0 0l4-4m-4 4l-4-4"/>`,
       dots:    `<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>`,
-      target:  `<circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/>`,
-      chart:   `<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>`,
       logout:  `<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>`,
       x:       `<line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>`,
       trash:   `<polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/>`,
       check:   `<polyline points="20 6 9 17 4 12"/>`,
       up:      `<polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/>`,
       refresh: `<polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/>`,
-      alert:   `<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>`,
     };
     const Ic = ({ n, size=20, color="currentColor" }) => (
       <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" dangerouslySetInnerHTML={{ __html: SVG[n]||"" }}/>
@@ -87,7 +85,7 @@
       }
     };
 
-    /* ── Budget Engine ── */
+    /* ── Smart Budget Engine ── */
     function smartBudget(disp) {
       if (disp <= 0) return {};
       let p;
@@ -96,6 +94,35 @@
       else if (disp < 55000) p = {"Food & Groceries":25,Transport:10,"Family & Kids":10,Health:6,Education:5,Leisure:8, Savings:20,Buffer:5,Emergency:11};
       else                   p = {"Food & Groceries":22,Transport:10,"Family & Kids":10,Health:6,Education:5,Leisure:8, Savings:25,Buffer:5,Emergency:9};
       return Object.fromEntries(Object.entries(p).map(([k,v])=>[k,{pct:v,amount:Math.round(disp*v/100)}]));
+    }
+
+    /* ── Core Financials Calculator (shared by Dashboard + Reports) ── */
+    function calcFinancials(data) {
+      const tInc     = data.income.reduce((s,i)=>s+Number(i.amount),0);
+      const tBill    = data.bills.reduce((s,b)=>s+Number(b.amount||0),0);
+      const tSpent   = data.transactions.reduce((s,t)=>s+Number(t.amount),0);
+      const ls       = data.lendings||[];
+      // Lending: money you gave out
+      const lentOut  = ls.filter(l=>l.type==="lending").reduce((s,l)=>s+Number(l.amount),0);
+      // Recovery: repayments you received back from people you lent to
+      const recovered= ls.filter(l=>l.type==="lending").reduce((s,l)=>s+Number(l.settled_amount),0);
+      // Borrowing: money others gave you
+      const borrowed = ls.filter(l=>l.type==="borrowing").reduce((s,l)=>s+Number(l.amount),0);
+      // Repaid: money you paid back to people you borrowed from
+      const repaid   = ls.filter(l=>l.type==="borrowing").reduce((s,l)=>s+Number(l.settled_amount),0);
+      // Still owed to you (active lendings)
+      const pendingOwed  = ls.filter(l=>l.type==="lending"&&!l.settled).reduce((s,l)=>s+Number(l.amount)-Number(l.settled_amount),0);
+      // You still owe others (active borrowings)
+      const pendingOwing = ls.filter(l=>l.type==="borrowing"&&!l.settled).reduce((s,l)=>s+Number(l.amount)-Number(l.settled_amount),0);
+
+      // True cash balance:
+      // Cash In  = Income + Borrowed + Recovered
+      // Cash Out = Bills + Expenses + LentOut + Repaid
+      const cashIn  = tInc + borrowed + recovered;
+      const cashOut = tBill + tSpent + lentOut + repaid;
+      const balance = cashIn - cashOut;
+
+      return { tInc, tBill, tSpent, lentOut, recovered, borrowed, repaid, cashIn, cashOut, balance, pendingOwed, pendingOwing };
     }
 
     /* ── Utils ── */
@@ -113,6 +140,7 @@
     const Row = ({ children, style={} }) => (
       <div style={{display:"flex",alignItems:"center",...style}}>{children}</div>
     );
+    const Divider = () => <div style={{height:1,background:"#1a2740",margin:"8px 0"}}/>;
     const SubTabs = ({ options, value, onChange }) => (
       <div style={{display:"flex",background:"#121c30",borderRadius:14,padding:3,marginBottom:4}}>
         {options.map(([v,l]) => (
@@ -159,17 +187,23 @@
     const Tag = ({ label, color, bg }) => (
       <span style={{fontSize:9,background:bg,color,borderRadius:6,padding:"1px 6px",fontWeight:700,flexShrink:0}}>{label}</span>
     );
+    const StatRow = ({ label, value, color="#fff", bold=false }) => (
+      <Row style={{justifyContent:"space-between",padding:"7px 0",borderBottom:"1px solid #1a2740"}}>
+        <span style={{color:"#9ca3af",fontSize:12}}>{label}</span>
+        <span style={{color,fontSize:12,fontWeight:bold?700:500}}>{value}</span>
+      </Row>
+    );
 
     /* ── Charts ── */
     const BarChart = ({ data }) => {
       const max = Math.max(...data.map(d=>d.value),1);
       return (
-        <div style={{display:"flex",alignItems:"flex-end",gap:8,height:130,padding:"0 4px"}}>
+        <div style={{display:"flex",alignItems:"flex-end",gap:6,height:130,padding:"0 2px"}}>
           {data.map(d=>(
             <div key={d.name} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,height:"100%",justifyContent:"flex-end"}}>
-              {d.value>0 && <span style={{color:"#fff",fontSize:9,fontWeight:600}}>{fmtK(d.value)}</span>}
-              <div style={{width:"100%",borderRadius:"5px 5px 0 0",background:d.fill,height:`${Math.max(d.value>0?(d.value/max)*100:0,d.value>0?4:0)}%`,transition:"height .5s"}}/>
-              <span style={{color:"#64748b",fontSize:9,textAlign:"center"}}>{d.name}</span>
+              {d.value>0 && <span style={{color:"#fff",fontSize:8,fontWeight:600,textAlign:"center"}}>{fmtK(d.value)}</span>}
+              <div style={{width:"100%",borderRadius:"4px 4px 0 0",background:d.fill,height:`${Math.max(d.value>0?(d.value/max)*100:0,d.value>0?4:0)}%`,transition:"height .5s"}}/>
+              <span style={{color:"#64748b",fontSize:8,textAlign:"center",lineHeight:1.2}}>{d.name}</span>
             </div>
           ))}
         </div>
@@ -242,17 +276,10 @@
 
     /* ── Dashboard ── */
     function Dashboard({ data }) {
-      const tInc  = data.income.reduce((s,i)=>s+Number(i.amount),0);
-      const tBill = data.bills.reduce((s,b)=>s+Number(b.amount||0),0);
-      const disp  = tInc-tBill;
-      const budget= smartBudget(disp);
-      const tSpent= data.transactions.reduce((s,t)=>s+Number(t.amount),0);
-      const bal   = tInc-tBill-tSpent;
-      const byC   = {}; data.transactions.forEach(t=>{ byC[t.category]=(byC[t.category]||0)+Number(t.amount); });
-
-      // Lending summary
-      const totalOwed = data.lendings.filter(l=>l.type==="lending"&&!l.settled).reduce((s,l)=>s+Number(l.amount)-Number(l.settled_amount),0);
-      const totalOwing= data.lendings.filter(l=>l.type==="borrowing"&&!l.settled).reduce((s,l)=>s+Number(l.amount)-Number(l.settled_amount),0);
+      const { tInc, tBill, tSpent, lentOut, recovered, borrowed, repaid, balance, pendingOwed, pendingOwing } = calcFinancials(data);
+      const disp   = tInc - tBill;
+      const budget = smartBudget(disp);
+      const byC    = {}; data.transactions.forEach(t=>{ byC[t.category]=(byC[t.category]||0)+Number(t.amount); });
 
       const td = new Date().getDate(); const todayStr = today();
       const alerts = [];
@@ -262,51 +289,37 @@
         else if (r>=0.8) alerts.push({t:"y",m:`⚠️ ${c} at ${Math.round(r*100)}% — watch this`});
       });
       data.bills.forEach(b=>{ if(b.due_day&&!b.paid&&b.due_day-td>=0&&b.due_day-td<=5) alerts.push({t:"b",m:`📅 ${b.bill_name} due on ${ord(b.due_day)}`}); });
-      data.lendings.filter(l=>!l.settled&&l.due_date&&l.due_date<=todayStr).forEach(l=>{
-        const isOver = l.due_date < todayStr;
-        alerts.push({t:"r",m:`${isOver?"🔴 OVERDUE":"📅 Due today"}: ${l.type==="lending"?"Lent to":"Borrowed from"} ${l.person_name} — ${fmt(Number(l.amount)-Number(l.settled_amount))}`});
+      (data.lendings||[]).filter(l=>!l.settled&&l.due_date&&l.due_date<=todayStr).forEach(l=>{
+        const over=l.due_date<todayStr;
+        alerts.push({t:"r",m:`${over?"🔴 OVERDUE":"📅 Due today"}: ${l.type==="lending"?"Lent to":"Borrowed from"} ${l.person_name} — ${fmt(Number(l.amount)-Number(l.settled_amount))}`});
       });
 
-      const aColor = t=>t==="r"?"#f87171":t==="y"?"#fbbf24":"#60a5fa";
-      const aBg    = t=>t==="r"?"#ef444415":t==="y"?"#f59e0b15":"#3b82f615";
+      const aC = t=>t==="r"?"#f87171":t==="y"?"#fbbf24":"#60a5fa";
+      const aB = t=>t==="r"?"#ef444415":t==="y"?"#f59e0b15":"#3b82f615";
 
       return (
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          {/* Hero */}
+          {/* Hero — now shows true cash balance */}
           <div style={{borderRadius:24,padding:20,background:"linear-gradient(135deg,#064e3b,#065f46,#047857)",position:"relative",overflow:"hidden"}}>
             <div style={{position:"absolute",top:-28,right:-28,width:120,height:120,borderRadius:"50%",background:"rgba(255,255,255,.08)"}}/>
-            <p style={{color:"#a7f3d0",fontSize:11,margin:"0 0 2px",fontWeight:500}}>{MONTHS[CM()-1]} {CY()} Overview</p>
-            <p style={{color:"rgba(255,255,255,.55)",fontSize:12,margin:0}}>Total Income</p>
-            <h2 style={{color:"#fff",fontSize:34,fontWeight:800,margin:"2px 0 14px",fontFamily:"Outfit,sans-serif"}}>{fmtK(tInc)}</h2>
-            <div style={{display:"flex",gap:20,flexWrap:"wrap"}}>
-              {[["Bills",tBill,"#fca5a5"],["Spent",tSpent,"#fcd34d"],["Balance",bal,bal>=0?"#6ee7b7":"#fca5a5"]].map(([l,v,c])=>(
-                <div key={l}><p style={{color:"rgba(167,243,208,.65)",fontSize:11,margin:"0 0 1px"}}>{l}</p><p style={{color:c,fontWeight:700,fontSize:13,margin:0}}>{fmtK(v)}</p></div>
+            <p style={{color:"#a7f3d0",fontSize:11,margin:"0 0 2px",fontWeight:500}}>{MONTHS[CM()-1]} {CY()} — True Cash Balance</p>
+            <h2 style={{color:"#fff",fontSize:36,fontWeight:800,margin:"2px 0 14px",fontFamily:"Outfit,sans-serif"}}>{fmtK(balance)}</h2>
+            <div style={{display:"flex",gap:16,flexWrap:"wrap"}}>
+              {[["Income",tInc,"#a7f3d0"],["Bills",tBill,"#fca5a5"],["Spent",tSpent,"#fcd34d"],["Lent",lentOut,"#f9a8d4"],["Borrowed",borrowed,"#a5f3fc"]].map(([l,v,c])=>(
+                <div key={l}><p style={{color:"rgba(167,243,208,.6)",fontSize:10,margin:"0 0 1px"}}>{l}</p><p style={{color:c,fontWeight:700,fontSize:12,margin:0}}>{fmtK(v)}</p></div>
               ))}
             </div>
           </div>
 
-          {/* Lending summary */}
-          {(totalOwed > 0 || totalOwing > 0) && (
+          {/* Lending position summary */}
+          {(pendingOwed>0||pendingOwing>0) && (
             <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-              {totalOwed>0 && (
-                <Card style={{padding:12,border:"1px solid #10b98133"}}>
-                  <p style={{color:"#6b7280",fontSize:10,margin:"0 0 2px"}}>Others Owe You</p>
-                  <p style={{color:"#34d399",fontWeight:700,fontSize:14,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmtK(totalOwed)}</p>
-                </Card>
-              )}
-              {totalOwing>0 && (
-                <Card style={{padding:12,border:"1px solid #ef444433"}}>
-                  <p style={{color:"#6b7280",fontSize:10,margin:"0 0 2px"}}>You Owe Others</p>
-                  <p style={{color:"#f87171",fontWeight:700,fontSize:14,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmtK(totalOwing)}</p>
-                </Card>
-              )}
+              {pendingOwed>0 && <Card style={{padding:12,border:"1px solid #10b98133"}}><p style={{color:"#6b7280",fontSize:10,margin:"0 0 2px"}}>Others Owe You</p><p style={{color:"#34d399",fontWeight:700,fontSize:14,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmtK(pendingOwed)}</p></Card>}
+              {pendingOwing>0 && <Card style={{padding:12,border:"1px solid #ef444433"}}><p style={{color:"#6b7280",fontSize:10,margin:"0 0 2px"}}>You Owe Others</p><p style={{color:"#f87171",fontWeight:700,fontSize:14,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmtK(pendingOwing)}</p></Card>}
             </div>
           )}
 
-          {/* Alerts */}
-          {alerts.map((a,i)=>(
-            <div key={i} style={{borderRadius:12,padding:12,fontSize:12,fontWeight:500,background:aBg(a.t),color:aColor(a.t)}}>{a.m}</div>
-          ))}
+          {alerts.map((a,i)=>(<div key={i} style={{borderRadius:12,padding:12,fontSize:12,fontWeight:500,background:aB(a.t),color:aC(a.t)}}>{a.m}</div>))}
 
           {/* Budget bars */}
           {disp>0&&Object.keys(budget).length>0&&(
@@ -378,40 +391,15 @@
             <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 4px"}}>Total Income — {MONTHS[CM()-1]} {CY()}</p>
             <h2 style={{color:"#34d399",fontSize:26,fontWeight:800,margin:"0 0 12px",fontFamily:"Outfit,sans-serif"}}>{fmt(total)}</h2>
             <div style={{display:"flex",flexWrap:"wrap",gap:8}}>
-              {Object.entries(bySrc).map(([s,a])=>(
-                <div key={s} style={{background:"#1a2740",borderRadius:10,padding:"5px 10px"}}>
-                  <p style={{color:"#6b7280",fontSize:10,margin:"0 0 1px"}}>{s}</p>
-                  <p style={{color:"#fff",fontSize:12,fontWeight:600,margin:0}}>{fmtK(a)}</p>
-                </div>
-              ))}
+              {Object.entries(bySrc).map(([s,a])=>(<div key={s} style={{background:"#1a2740",borderRadius:10,padding:"5px 10px"}}><p style={{color:"#6b7280",fontSize:10,margin:"0 0 1px"}}>{s}</p><p style={{color:"#fff",fontSize:12,fontWeight:600,margin:0}}>{fmtK(a)}</p></div>))}
             </div>
           </Card>
           <Btn onClick={()=>setShow(true)}>+ Add Income Entry</Btn>
           {data.income.map(i=>(
-            <Card key={i.id}>
-              <Row style={{justifyContent:"space-between"}}>
-                <Row style={{gap:10}}>
-                  <div style={{width:38,height:38,borderRadius:12,background:"#10b98122",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Ic n="up" size={17} color="#10b981"/></div>
-                  <div>
-                    <p style={{color:"#fff",fontWeight:600,margin:"0 0 1px",fontSize:13}}>{fmt(i.amount)}</p>
-                    <p style={{color:"#6b7280",fontSize:11,margin:0}}>{i.source} · {i.date}</p>
-                    {i.note&&<p style={{color:"#4b5563",fontSize:10,margin:0}}>{i.note}</p>}
-                  </div>
-                </Row>
-                <DelBtn onClick={()=>del(i.id)}/>
-              </Row>
-            </Card>
+            <Card key={i.id}><Row style={{justifyContent:"space-between"}}><Row style={{gap:10}}><div style={{width:38,height:38,borderRadius:12,background:"#10b98122",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><Ic n="up" size={17} color="#10b981"/></div><div><p style={{color:"#fff",fontWeight:600,margin:"0 0 1px",fontSize:13}}>{fmt(i.amount)}</p><p style={{color:"#6b7280",fontSize:11,margin:0}}>{i.source} · {i.date}</p>{i.note&&<p style={{color:"#4b5563",fontSize:10,margin:0}}>{i.note}</p>}</div></Row><DelBtn onClick={()=>del(i.id)}/></Row></Card>
           ))}
           {data.income.length===0&&<p style={{color:"#374151",fontSize:13,textAlign:"center",padding:32}}>No income recorded this month</p>}
-          {show&&(
-            <Modal title="Add Income" onClose={()=>setShow(false)}>
-              <FSel label="Source" value={form.source} onChange={e=>setForm({...form,source:e.target.value})}>{INC_SRC.map(s=><option key={s}>{s}</option>)}</FSel>
-              <FInput label="Amount (LKR)" type="number" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/>
-              <FInput label="Note (optional)" placeholder="e.g. April salary" value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/>
-              <FInput label="Date" type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
-              <Btn onClick={add} disabled={busy||!form.amount}>{busy?"Saving…":"Add Income"}</Btn>
-            </Modal>
-          )}
+          {show&&(<Modal title="Add Income" onClose={()=>setShow(false)}><FSel label="Source" value={form.source} onChange={e=>setForm({...form,source:e.target.value})}>{INC_SRC.map(s=><option key={s}>{s}</option>)}</FSel><FInput label="Amount (LKR)" type="number" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/><FInput label="Note (optional)" placeholder="e.g. April salary" value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/><FInput label="Date" type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/><Btn onClick={add} disabled={busy||!form.amount}>{busy?"Saving…":"Add Income"}</Btn></Modal>)}
         </div>
       );
     }
@@ -435,40 +423,14 @@
       return (
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:8}}>
-            {[["Total",total,"#f87171"],["Paid",paid,"#34d399"],["Pending",total-paid,"#fbbf24"]].map(([l,v,c])=>(
-              <Card key={l} style={{padding:12}}>
-                <p style={{color:"#6b7280",fontSize:10,margin:"0 0 2px"}}>{l}</p>
-                <p style={{color:c,fontWeight:700,fontSize:13,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmtK(v)}</p>
-              </Card>
-            ))}
+            {[["Total",total,"#f87171"],["Paid",paid,"#34d399"],["Pending",total-paid,"#fbbf24"]].map(([l,v,c])=>(<Card key={l} style={{padding:12}}><p style={{color:"#6b7280",fontSize:10,margin:"0 0 2px"}}>{l}</p><p style={{color:c,fontWeight:700,fontSize:13,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmtK(v)}</p></Card>))}
           </div>
           <Btn onClick={()=>setShow(true)}>+ Add Bill</Btn>
           {data.bills.map(b=>(
-            <Card key={b.id}>
-              <Row style={{gap:10}}>
-                <button onClick={()=>toggle(b)} style={{width:26,height:26,borderRadius:"50%",border:`2px solid ${b.paid?"#10b981":"#334155"}`,background:b.paid?"#10b981":"transparent",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>
-                  {b.paid&&<Ic n="check" size={12} color="#fff"/>}
-                </button>
-                <div style={{flex:1,minWidth:0}}>
-                  <p style={{color:b.paid?"#6b7280":"#fff",fontSize:13,fontWeight:600,margin:"0 0 1px",textDecoration:b.paid?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.bill_name}</p>
-                  <p style={{color:"#4b5563",fontSize:10,margin:0}}>{b.bill_type}{b.due_day?` · Due: ${ord(b.due_day)}`:""}</p>
-                </div>
-                <p style={{color:"#fff",fontWeight:700,fontSize:13,margin:0,flexShrink:0}}>{b.amount?fmtK(b.amount):"—"}</p>
-                <DelBtn onClick={()=>del(b.id)}/>
-              </Row>
-            </Card>
+            <Card key={b.id}><Row style={{gap:10}}><button onClick={()=>toggle(b)} style={{width:26,height:26,borderRadius:"50%",border:`2px solid ${b.paid?"#10b981":"#334155"}`,background:b.paid?"#10b981":"transparent",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",flexShrink:0}}>{b.paid&&<Ic n="check" size={12} color="#fff"/>}</button><div style={{flex:1,minWidth:0}}><p style={{color:b.paid?"#6b7280":"#fff",fontSize:13,fontWeight:600,margin:"0 0 1px",textDecoration:b.paid?"line-through":"none",overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{b.bill_name}</p><p style={{color:"#4b5563",fontSize:10,margin:0}}>{b.bill_type}{b.due_day?` · Due: ${ord(b.due_day)}`:""}</p></div><p style={{color:"#fff",fontWeight:700,fontSize:13,margin:0,flexShrink:0}}>{b.amount?fmtK(b.amount):"—"}</p><DelBtn onClick={()=>del(b.id)}/></Row></Card>
           ))}
           {data.bills.length===0&&<p style={{color:"#374151",fontSize:13,textAlign:"center",padding:32}}>No bills added this month</p>}
-          {show&&(
-            <Modal title="Add Bill" onClose={()=>setShow(false)}>
-              <FSel label="Bill Type" value={form.bill_type} onChange={e=>setForm({...form,bill_type:e.target.value,bill_name:BILL_DEF[e.target.value]||""})}>{BILL_TYP.map(t=><option key={t}>{t}</option>)}</FSel>
-              <FInput label="Bill Name" value={form.bill_name} onChange={e=>setForm({...form,bill_name:e.target.value})}/>
-              <FInput label="Amount (LKR)" type="number" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/>
-              <FInput label="Due Day (1–31)" type="number" min="1" max="31" placeholder="e.g. 25" value={form.due_day} onChange={e=>setForm({...form,due_day:e.target.value})}/>
-              <div style={{borderRadius:12,padding:12,marginBottom:14,fontSize:12,color:"#60a5fa",background:"#3b82f615"}}>💡 Leave amount blank — update when you receive the bill.</div>
-              <Btn onClick={add} disabled={busy}>{busy?"Saving…":"Add Bill"}</Btn>
-            </Modal>
-          )}
+          {show&&(<Modal title="Add Bill" onClose={()=>setShow(false)}><FSel label="Bill Type" value={form.bill_type} onChange={e=>setForm({...form,bill_type:e.target.value,bill_name:BILL_DEF[e.target.value]||""})}>{BILL_TYP.map(t=><option key={t}>{t}</option>)}</FSel><FInput label="Bill Name" value={form.bill_name} onChange={e=>setForm({...form,bill_name:e.target.value})}/><FInput label="Amount (LKR)" type="number" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/><FInput label="Due Day (1–31)" type="number" min="1" max="31" placeholder="e.g. 25" value={form.due_day} onChange={e=>setForm({...form,due_day:e.target.value})}/><div style={{borderRadius:12,padding:12,marginBottom:14,fontSize:12,color:"#60a5fa",background:"#3b82f615"}}>💡 Leave amount blank — update when you receive the bill.</div><Btn onClick={add} disabled={busy}>{busy?"Saving…":"Add Bill"}</Btn></Modal>)}
         </div>
       );
     }
@@ -486,53 +448,23 @@
         setForm({category:"Food & Groceries",amount:"",note:"",date:today()}); setShow(false); onRefresh(); setBusy(false);
       };
       const del = async id => { await sb.del("transactions",token,id); onRefresh(); };
-
       const byDate={}; data.transactions.forEach(t=>{ if(!byDate[t.date]) byDate[t.date]=[]; byDate[t.date].push(t); });
       const dates=Object.keys(byDate).sort().reverse();
 
       return (
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          <Card>
-            <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 4px"}}>Total Expenses — {MONTHS[CM()-1]}</p>
-            <h2 style={{color:"#f87171",fontSize:26,fontWeight:800,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmt(total)}</h2>
-          </Card>
+          <Card><p style={{color:"#9ca3af",fontSize:12,margin:"0 0 4px"}}>Total Expenses — {MONTHS[CM()-1]}</p><h2 style={{color:"#f87171",fontSize:26,fontWeight:800,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmt(total)}</h2></Card>
           <Btn onClick={()=>setShow(true)}>+ Add Expense</Btn>
           {dates.map(d=>(
             <div key={d}>
               <p style={{color:"#4b5563",fontSize:10,fontWeight:500,margin:"0 0 6px"}}>{d}</p>
               <div style={{display:"flex",flexDirection:"column",gap:6}}>
-                {byDate[d].map(t=>(
-                  <Card key={t.id} style={{padding:12}}>
-                    <Row style={{justifyContent:"space-between"}}>
-                      <Row style={{gap:10}}>
-                        <div style={{width:34,height:34,borderRadius:10,background:(COLORS[t.category]||"#10b981")+"22",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}>
-                          <div style={{width:9,height:9,borderRadius:"50%",background:COLORS[t.category]||"#10b981"}}/>
-                        </div>
-                        <div>
-                          <p style={{color:"#fff",fontSize:13,fontWeight:600,margin:"0 0 1px"}}>{t.category}</p>
-                          {t.note&&<p style={{color:"#6b7280",fontSize:10,margin:0}}>{t.note}</p>}
-                        </div>
-                      </Row>
-                      <Row style={{gap:8}}>
-                        <p style={{color:"#f87171",fontWeight:700,fontSize:13,margin:0}}>-{fmtK(t.amount)}</p>
-                        <DelBtn onClick={()=>del(t.id)}/>
-                      </Row>
-                    </Row>
-                  </Card>
-                ))}
+                {byDate[d].map(t=>(<Card key={t.id} style={{padding:12}}><Row style={{justifyContent:"space-between"}}><Row style={{gap:10}}><div style={{width:34,height:34,borderRadius:10,background:(COLORS[t.category]||"#10b981")+"22",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0}}><div style={{width:9,height:9,borderRadius:"50%",background:COLORS[t.category]||"#10b981"}}/></div><div><p style={{color:"#fff",fontSize:13,fontWeight:600,margin:"0 0 1px"}}>{t.category}</p>{t.note&&<p style={{color:"#6b7280",fontSize:10,margin:0}}>{t.note}</p>}</div></Row><Row style={{gap:8}}><p style={{color:"#f87171",fontWeight:700,fontSize:13,margin:0}}>-{fmtK(t.amount)}</p><DelBtn onClick={()=>del(t.id)}/></Row></Row></Card>))}
               </div>
             </div>
           ))}
           {data.transactions.length===0&&<p style={{color:"#374151",fontSize:13,textAlign:"center",padding:32}}>No expenses recorded yet</p>}
-          {show&&(
-            <Modal title="Add Expense" onClose={()=>setShow(false)}>
-              <FSel label="Category" value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>{EXP_CATS.map(c=><option key={c}>{c}</option>)}</FSel>
-              <FInput label="Amount (LKR)" type="number" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/>
-              <FInput label="Note (optional)" placeholder="What was this for?" value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/>
-              <FInput label="Date" type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
-              <Btn onClick={add} disabled={busy||!form.amount}>{busy?"Saving…":"Add Expense"}</Btn>
-            </Modal>
-          )}
+          {show&&(<Modal title="Add Expense" onClose={()=>setShow(false)}><FSel label="Category" value={form.category} onChange={e=>setForm({...form,category:e.target.value})}>{EXP_CATS.map(c=><option key={c}>{c}</option>)}</FSel><FInput label="Amount (LKR)" type="number" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/><FInput label="Note (optional)" placeholder="What was this for?" value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/><FInput label="Date" type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/><Btn onClick={add} disabled={busy||!form.amount}>{busy?"Saving…":"Add Expense"}</Btn></Modal>)}
         </div>
       );
     }
@@ -546,11 +478,10 @@
       const [sAmt,setSAmt]=useState("");
       const [busy,setBusy]=useState(false);
 
-      const all = data.lendings||[];
-      const totalOwed  = all.filter(l=>l.type==="lending"&&!l.settled).reduce((s,l)=>s+Number(l.amount)-Number(l.settled_amount),0);
-      const totalOwing = all.filter(l=>l.type==="borrowing"&&!l.settled).reduce((s,l)=>s+Number(l.amount)-Number(l.settled_amount),0);
-      const filtered   = all.filter(l=>l.type===filter);
-      const todayStr   = today();
+      const all=data.lendings||[];
+      const { pendingOwed, pendingOwing } = calcFinancials(data);
+      const filtered=all.filter(l=>l.type===filter);
+      const todayStr=today();
 
       const add = async () => {
         if (!form.person_name||!form.amount) return; setBusy(true);
@@ -560,106 +491,68 @@
       const doSettle = async rec => {
         if (!sAmt) return; setBusy(true);
         const ns=Number(rec.settled_amount)+parseFloat(sAmt);
-        await sb.upd("lendings",token,rec.id,{settled_amount:ns,settled:ns>=Number(rec.amount)});
+        await sb.upd("lendings",token,rec.id,{settled_amount:Math.min(ns,Number(rec.amount)),settled:ns>=Number(rec.amount)});
         setSAmt(""); setSettle(null); onRefresh(); setBusy(false);
       };
       const del = async id => { await sb.del("lendings",token,id); onRefresh(); };
 
-      const isOverdue = l => l.due_date&&!l.settled&&l.due_date<todayStr;
-      const isDueToday= l => l.due_date&&!l.settled&&l.due_date===todayStr;
-
       return (
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
-          {/* Summary */}
           <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-            <Card style={{padding:12,border:"1px solid #10b98122"}}>
-              <p style={{color:"#9ca3af",fontSize:10,margin:"0 0 2px"}}>Others Owe You</p>
-              <p style={{color:"#34d399",fontWeight:700,fontSize:15,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmt(totalOwed)}</p>
-            </Card>
-            <Card style={{padding:12,border:"1px solid #ef444422"}}>
-              <p style={{color:"#9ca3af",fontSize:10,margin:"0 0 2px"}}>You Owe Others</p>
-              <p style={{color:"#f87171",fontWeight:700,fontSize:15,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmt(totalOwing)}</p>
-            </Card>
+            <Card style={{padding:12,border:"1px solid #10b98122"}}><p style={{color:"#9ca3af",fontSize:10,margin:"0 0 2px"}}>Others Owe You</p><p style={{color:"#34d399",fontWeight:700,fontSize:15,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmt(pendingOwed)}</p></Card>
+            <Card style={{padding:12,border:"1px solid #ef444422"}}><p style={{color:"#9ca3af",fontSize:10,margin:"0 0 2px"}}>You Owe Others</p><p style={{color:"#f87171",fontWeight:700,fontSize:15,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmt(pendingOwing)}</p></Card>
           </div>
-
           <SubTabs options={[["lending","💰 You Lent"],["borrowing","🤝 You Borrowed"]]} value={filter} onChange={setFilter}/>
-
           <Btn onClick={()=>setShowAdd(true)}>+ Add {filter==="lending"?"Lending":"Borrowing"}</Btn>
 
           {filtered.map(l=>{
             const remaining=Number(l.amount)-Number(l.settled_amount);
             const pct=Number(l.settled_amount)/Number(l.amount);
-            const overdue=isOverdue(l), dueToday=isDueToday(l);
+            const overdue=l.due_date&&!l.settled&&l.due_date<todayStr;
+            const dueToday=l.due_date&&!l.settled&&l.due_date===todayStr;
             return (
               <Card key={l.id}>
                 <Row style={{justifyContent:"space-between",alignItems:"flex-start",marginBottom:8}}>
                   <div style={{flex:1,minWidth:0}}>
                     <Row style={{gap:6,marginBottom:3,flexWrap:"wrap"}}>
                       <p style={{color:"#fff",fontWeight:700,fontSize:14,margin:0}}>{l.person_name}</p>
-                      {l.settled   && <Tag label="SETTLED"  color="#10b981" bg="#10b98122"/>}
-                      {overdue     && <Tag label="OVERDUE"  color="#f87171" bg="#ef444422"/>}
-                      {dueToday    && <Tag label="DUE TODAY" color="#fbbf24" bg="#f59e0b22"/>}
+                      {l.settled  && <Tag label="SETTLED"   color="#10b981" bg="#10b98122"/>}
+                      {overdue    && <Tag label="OVERDUE"   color="#f87171" bg="#ef444422"/>}
+                      {dueToday   && <Tag label="DUE TODAY" color="#fbbf24" bg="#f59e0b22"/>}
                     </Row>
                     <p style={{color:"#6b7280",fontSize:10,margin:"0 0 1px"}}>{l.date}{l.due_date?` · Due: ${l.due_date}`:""}</p>
                     {l.note&&<p style={{color:"#4b5563",fontSize:10,margin:0}}>{l.note}</p>}
                   </div>
                   <DelBtn onClick={()=>del(l.id)}/>
                 </Row>
-
                 <Row style={{justifyContent:"space-between",marginBottom:Number(l.settled_amount)>0?8:10}}>
                   <p style={{color:filter==="lending"?"#34d399":"#f87171",fontWeight:700,fontSize:15,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmt(l.amount)}</p>
-                  {Number(l.settled_amount)>0&&!l.settled&&(
-                    <p style={{color:"#9ca3af",fontSize:11,margin:0}}>Remaining: <span style={{color:"#fff",fontWeight:600}}>{fmt(remaining)}</span></p>
-                  )}
+                  {Number(l.settled_amount)>0&&!l.settled&&<p style={{color:"#9ca3af",fontSize:11,margin:0}}>Remaining: <span style={{color:"#fff",fontWeight:600}}>{fmt(remaining)}</span></p>}
                 </Row>
-
-                {Number(l.settled_amount)>0&&(
-                  <div style={{marginBottom:10}}>
-                    <div style={{background:"#1a2740",borderRadius:4,height:5,overflow:"hidden"}}>
-                      <div style={{height:"100%",borderRadius:4,width:`${Math.min(pct,1)*100}%`,background:"#10b981",transition:"width .5s"}}/>
-                    </div>
-                    <p style={{color:"#6b7280",fontSize:10,margin:"4px 0 0"}}>Settled: {fmt(l.settled_amount)}</p>
-                  </div>
-                )}
-
-                {!l.settled&&(
-                  <button onClick={()=>setSettle(l)} style={{width:"100%",borderRadius:10,padding:"7px 0",fontSize:12,fontWeight:600,border:"1px solid #10b98133",background:"#10b98115",color:"#10b981",cursor:"pointer",fontFamily:"Outfit,sans-serif"}}>
-                    ✓ Record Settlement
-                  </button>
-                )}
+                {Number(l.settled_amount)>0&&(<div style={{marginBottom:10}}><div style={{background:"#1a2740",borderRadius:4,height:5,overflow:"hidden"}}><div style={{height:"100%",borderRadius:4,width:`${Math.min(pct,1)*100}%`,background:"#10b981",transition:"width .5s"}}/></div><p style={{color:"#6b7280",fontSize:10,margin:"4px 0 0"}}>Settled: {fmt(l.settled_amount)}</p></div>)}
+                {!l.settled&&(<button onClick={()=>setSettle(l)} style={{width:"100%",borderRadius:10,padding:"7px 0",fontSize:12,fontWeight:600,border:"1px solid #10b98133",background:"#10b98115",color:"#10b981",cursor:"pointer",fontFamily:"Outfit,sans-serif"}}>✓ Record Settlement</button>)}
               </Card>
             );
           })}
           {filtered.length===0&&<p style={{color:"#374151",fontSize:13,textAlign:"center",padding:32}}>No {filter==="lending"?"lendings":"borrowings"} recorded</p>}
 
-          {showAdd&&(
-            <Modal title={`Add ${filter==="lending"?"Lending":"Borrowing"}`} onClose={()=>setShowAdd(false)}>
-              <FInput label={filter==="lending"?"Lent To (Name)":"Borrowed From (Name)"} placeholder="Person's name" value={form.person_name} onChange={e=>setForm({...form,person_name:e.target.value})}/>
-              <FInput label="Amount (LKR)" type="number" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/>
-              <FInput label="Note (optional)" placeholder="What was it for?" value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/>
-              <FInput label="Date" type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
-              <FInput label="Due / Return Date (optional)" type="date" value={form.due_date} onChange={e=>setForm({...form,due_date:e.target.value})}/>
-              <Btn onClick={add} disabled={busy||!form.person_name||!form.amount}>{busy?"Saving…":"Add Record"}</Btn>
-            </Modal>
-          )}
+          {showAdd&&(<Modal title={`Add ${filter==="lending"?"Lending":"Borrowing"}`} onClose={()=>setShowAdd(false)}>
+            <FInput label={filter==="lending"?"Lent To (Name)":"Borrowed From (Name)"} placeholder="Person's name" value={form.person_name} onChange={e=>setForm({...form,person_name:e.target.value})}/>
+            <FInput label="Amount (LKR)" type="number" inputMode="decimal" placeholder="0.00" value={form.amount} onChange={e=>setForm({...form,amount:e.target.value})}/>
+            <FInput label="Note (optional)" placeholder="What was it for?" value={form.note} onChange={e=>setForm({...form,note:e.target.value})}/>
+            <FInput label="Date" type="date" value={form.date} onChange={e=>setForm({...form,date:e.target.value})}/>
+            <FInput label="Due / Return Date (optional)" type="date" value={form.due_date} onChange={e=>setForm({...form,due_date:e.target.value})}/>
+            <Btn onClick={add} disabled={busy||!form.person_name||!form.amount}>{busy?"Saving…":"Add Record"}</Btn>
+          </Modal>)}
 
-          {settle&&(
-            <Modal title={`Settle: ${settle.person_name}`} onClose={()=>setSettle(null)}>
-              <div style={{borderRadius:12,padding:14,marginBottom:14,background:"#1a2740"}}>
-                {[["Total",settle.amount,"#fff"],["Already Settled",settle.settled_amount,"#34d399"],["Remaining",Number(settle.amount)-Number(settle.settled_amount),"#f87171"]].map(([l,v,c])=>(
-                  <Row key={l} style={{justifyContent:"space-between",marginBottom:4}}>
-                    <span style={{color:"#9ca3af",fontSize:12}}>{l}</span>
-                    <span style={{color:c,fontWeight:600,fontSize:12}}>{fmt(v)}</span>
-                  </Row>
-                ))}
-              </div>
-              <FInput label="Settlement Amount (LKR)" type="number" inputMode="decimal" placeholder="0.00" value={sAmt} onChange={e=>setSAmt(e.target.value)}/>
-              <div style={{borderRadius:12,padding:10,marginBottom:14,fontSize:11,color:"#60a5fa",background:"#3b82f615"}}>
-                💡 Enter full remaining amount to fully settle, or partial amount for part-payment.
-              </div>
-              <Btn onClick={()=>doSettle(settle)} disabled={busy||!sAmt}>{busy?"Saving…":"Record Settlement"}</Btn>
-            </Modal>
-          )}
+          {settle&&(<Modal title={`Settle: ${settle.person_name}`} onClose={()=>setSettle(null)}>
+            <div style={{borderRadius:12,padding:14,marginBottom:14,background:"#1a2740"}}>
+              {[["Total Amount",settle.amount,"#fff"],["Already Settled",settle.settled_amount,"#34d399"],["Remaining",Number(settle.amount)-Number(settle.settled_amount),"#f87171"]].map(([l,v,c])=>(<Row key={l} style={{justifyContent:"space-between",marginBottom:4}}><span style={{color:"#9ca3af",fontSize:12}}>{l}</span><span style={{color:c,fontWeight:600,fontSize:12}}>{fmt(v)}</span></Row>))}
+            </div>
+            <FInput label="Settlement Amount (LKR)" type="number" inputMode="decimal" placeholder="0.00" value={sAmt} onChange={e=>setSAmt(e.target.value)}/>
+            <div style={{borderRadius:12,padding:10,marginBottom:14,fontSize:11,color:"#60a5fa",background:"#3b82f615"}}>💡 Enter full remaining to fully settle, or partial for part-payment.</div>
+            <Btn onClick={()=>doSettle(settle)} disabled={busy||!sAmt}>{busy?"Saving…":"Record Settlement"}</Btn>
+          </Modal>)}
         </div>
       );
     }
@@ -668,19 +561,17 @@
     function MoreScreen({ token, userId, data, onRefresh }) {
       const [section,setSection]=useState("goals");
 
-      /* Goals logic */
-      const tInc=data.income.reduce((s,i)=>s+Number(i.amount),0);
-      const tBill=data.bills.reduce((s,b)=>s+Number(b.amount||0),0);
-      const tSp=data.transactions.reduce((s,t)=>s+Number(t.amount),0);
-      const pot=tInc-tBill-tSp;
-      const bud=smartBudget(tInc-tBill);
-      const sug=bud["Savings"]?.amount||0;
-
+      /* Goals state */
       const [showAdd,setShowAdd]=useState(false);
       const [contrib,setContrib]=useState(null);
       const [gForm,setGForm]=useState({name:"",target_amount:"",target_date:""});
       const [cAmt,setCAmt]=useState("");
       const [busy,setBusy]=useState(false);
+
+      const { tInc, tBill, tSpent, lentOut, recovered, borrowed, repaid, cashIn, cashOut, balance, pendingOwed, pendingOwing } = calcFinancials(data);
+      const bud=smartBudget(tInc-tBill);
+      const sug=bud["Savings"]?.amount||0;
+      const pot=balance; // savings potential = true balance
 
       const addGoal = async () => {
         if (!gForm.name||!gForm.target_amount) return; setBusy(true);
@@ -694,12 +585,22 @@
       };
       const delG = async id => { await sb.del("savings_goals",token,id); onRefresh(); };
 
-      /* Reports logic */
-      const tInc2=tInc, tBill2=tBill, tSp2=tSp, saved=Math.max(tInc-tBill-tSp,0);
+      /* Reports data */
       const byC={}; data.transactions.forEach(t=>{ byC[t.category]=(byC[t.category]||0)+Number(t.amount); });
       const pie=Object.entries(byC).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
-      const bars=[{name:"Income",value:tInc2,fill:"#10b981"},{name:"Bills",value:tBill2,fill:"#ef4444"},{name:"Expenses",value:tSp2,fill:"#f59e0b"},{name:"Saved",value:saved,fill:"#84cc16"}];
       const bySrc={}; data.income.forEach(i=>{ bySrc[i.source]=(bySrc[i.source]||0)+Number(i.amount); });
+
+      // Updated bar chart includes lending flows
+      const bars=[
+        {name:"Income",    value:tInc,     fill:"#10b981"},
+        {name:"Borrowed",  value:borrowed,  fill:"#06b6d4"},
+        {name:"Recovered", value:recovered, fill:"#60a5fa"},
+        {name:"Bills",     value:tBill,    fill:"#ef4444"},
+        {name:"Expenses",  value:tSpent,   fill:"#f59e0b"},
+        {name:"Lent Out",  value:lentOut,  fill:"#f43f5e"},
+        {name:"Repaid",    value:repaid,   fill:"#fb923c"},
+        {name:"Balance",   value:Math.max(balance,0), fill:"#84cc16"},
+      ].filter(b=>b.value>0);
 
       return (
         <div style={{display:"flex",flexDirection:"column",gap:12}}>
@@ -708,9 +609,10 @@
           {section==="goals" ? (
             <>
               <Card>
-                <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 4px"}}>This Month's Savings Potential</p>
+                <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 4px"}}>True Savings Potential</p>
                 <h2 style={{color:pot>=0?"#a3e635":"#f87171",fontSize:26,fontWeight:800,margin:"0 0 4px",fontFamily:"Outfit,sans-serif"}}>{pot>=0?"":"-"}{fmt(Math.abs(pot))}</h2>
-                {sug>0&&<p style={{color:"#6b7280",fontSize:12,margin:0}}>Suggested: <span style={{color:"#10b981"}}>{fmt(sug)}/month</span></p>}
+                <p style={{color:"#6b7280",fontSize:11,margin:0}}>After income, bills, expenses & lending activity</p>
+                {sug>0&&<p style={{color:"#6b7280",fontSize:12,margin:"4px 0 0"}}>Suggested: <span style={{color:"#10b981"}}>{fmt(sug)}/month</span></p>}
               </Card>
               <Btn onClick={()=>setShowAdd(true)}>+ New Savings Goal</Btn>
               {data.goals.map(g=>{
@@ -720,20 +622,11 @@
                 return (
                   <Card key={g.id}>
                     <Row style={{justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
-                      <div>
-                        <p style={{color:"#fff",fontWeight:600,margin:"0 0 2px"}}>{g.name}</p>
-                        <p style={{color:"#6b7280",fontSize:11,margin:"0 0 1px"}}>Target: {fmt(g.target_amount)}</p>
-                        {ml&&ml>0&&<p style={{color:"#4b5563",fontSize:10,margin:0}}>~{ml} month{ml>1?"s":""} to go</p>}
-                      </div>
+                      <div><p style={{color:"#fff",fontWeight:600,margin:"0 0 2px"}}>{g.name}</p><p style={{color:"#6b7280",fontSize:11,margin:"0 0 1px"}}>Target: {fmt(g.target_amount)}</p>{ml&&ml>0&&<p style={{color:"#4b5563",fontSize:10,margin:0}}>~{ml} month{ml>1?"s":""} to go</p>}</div>
                       <DelBtn onClick={()=>delG(g.id)}/>
                     </Row>
-                    <div style={{background:"#1a2740",borderRadius:6,height:8,overflow:"hidden",marginBottom:4}}>
-                      <div style={{height:"100%",borderRadius:6,width:`${pct*100}%`,background:"linear-gradient(90deg,#84cc16,#65a30d)",transition:"width .5s"}}/>
-                    </div>
-                    <Row style={{justifyContent:"space-between",marginBottom:10}}>
-                      <span style={{color:"#6b7280",fontSize:11}}>Saved: {fmt(g.current_amount)}</span>
-                      <span style={{color:"#a3e635",fontWeight:600,fontSize:11}}>{Math.round(pct*100)}%</span>
-                    </Row>
+                    <div style={{background:"#1a2740",borderRadius:6,height:8,overflow:"hidden",marginBottom:4}}><div style={{height:"100%",borderRadius:6,width:`${pct*100}%`,background:"linear-gradient(90deg,#84cc16,#65a30d)",transition:"width .5s"}}/></div>
+                    <Row style={{justifyContent:"space-between",marginBottom:10}}><span style={{color:"#6b7280",fontSize:11}}>Saved: {fmt(g.current_amount)}</span><span style={{color:"#a3e635",fontWeight:600,fontSize:11}}>{Math.round(pct*100)}%</span></Row>
                     <button onClick={()=>setContrib(g)} style={{width:"100%",borderRadius:10,padding:"8px 0",fontSize:12,fontWeight:600,border:"1px solid #10b98133",background:"#10b98115",color:"#10b981",cursor:"pointer",fontFamily:"Outfit,sans-serif"}}>+ Add Savings</button>
                   </Card>
                 );
@@ -742,63 +635,68 @@
             </>
           ) : (
             <>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:8}}>
-                {[["Income",tInc2,"#34d399"],["Bills",tBill2,"#f87171"],["Spent",tSp2,"#fbbf24"],["Saved",saved,"#a3e635"]].map(([l,v,c])=>(
-                  <Card key={l} style={{padding:12}}>
-                    <p style={{color:"#6b7280",fontSize:10,margin:"0 0 2px"}}>{l}</p>
-                    <p style={{color:c,fontWeight:700,fontSize:14,margin:0,fontFamily:"Outfit,sans-serif"}}>{fmtK(v)}</p>
-                  </Card>
-                ))}
-              </div>
-              <Card>
-                <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 14px"}}>Monthly Overview</p>
-                <BarChart data={bars}/>
+              {/* True Balance Summary */}
+              <Card style={{border:"1px solid #10b98133"}}>
+                <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 4px"}}>True Cash Balance</p>
+                <h2 style={{color:balance>=0?"#a3e635":"#f87171",fontSize:28,fontWeight:800,margin:"0 0 12px",fontFamily:"Outfit,sans-serif"}}>{balance>=0?"":"-"}{fmt(Math.abs(balance))}</h2>
+                <Divider/>
+                <StatRow label="Total Income"    value={fmt(tInc)}     color="#34d399"/>
+                <StatRow label="+ Borrowed In"   value={fmt(borrowed)}  color="#06b6d4"/>
+                <StatRow label="+ Recovered In"  value={fmt(recovered)} color="#60a5fa"/>
+                <StatRow label="− Bills"         value={fmt(tBill)}    color="#f87171"/>
+                <StatRow label="− Expenses"      value={fmt(tSpent)}   color="#f59e0b"/>
+                <StatRow label="− Lent Out"      value={fmt(lentOut)}  color="#f43f5e"/>
+                <StatRow label="− Repaid"        value={fmt(repaid)}   color="#fb923c"/>
+                <div style={{height:1,background:"#10b981",margin:"8px 0"}}/>
+                <StatRow label="True Balance"    value={fmt(balance)}   color={balance>=0?"#a3e635":"#f87171"} bold={true}/>
               </Card>
+
+              {/* Lending Position */}
+              {(pendingOwed>0||pendingOwing>0) && (
+                <Card>
+                  <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 10px"}}>Outstanding Lending Position</p>
+                  {pendingOwed>0  && <StatRow label="Others Still Owe You" value={fmt(pendingOwed)}  color="#34d399"/>}
+                  {pendingOwing>0 && <StatRow label="You Still Owe Others"  value={fmt(pendingOwing)} color="#f87171"/>}
+                  <div style={{height:1,background:"#1a2740",margin:"6px 0"}}/>
+                  <StatRow label="Net Position" value={fmt(pendingOwed-pendingOwing)} color={pendingOwed>=pendingOwing?"#34d399":"#f87171"} bold={true}/>
+                </Card>
+              )}
+
+              {/* Full cash flow chart */}
+              <Card>
+                <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 14px"}}>Complete Cash Flow</p>
+                <BarChart data={bars}/>
+                <div style={{display:"flex",flexWrap:"wrap",gap:6,marginTop:10}}>
+                  {[["#10b981","Income"],["#06b6d4","Borrowed"],["#60a5fa","Recovered"],["#ef4444","Bills"],["#f59e0b","Expenses"],["#f43f5e","Lent Out"],["#fb923c","Repaid"],["#84cc16","Balance"]].map(([c,l])=>(
+                    <Row key={l} style={{gap:4}}><div style={{width:7,height:7,borderRadius:"50%",background:c,flexShrink:0}}/><span style={{color:"#6b7280",fontSize:9}}>{l}</span></Row>
+                  ))}
+                </div>
+              </Card>
+
+              {/* Category pie */}
               {pie.length>0&&(
                 <Card>
                   <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 10px"}}>Expenses by Category</p>
                   <Row style={{alignItems:"center"}}>
                     <Donut data={pie}/>
                     <div style={{flex:1,paddingLeft:10,display:"flex",flexDirection:"column",gap:5}}>
-                      {pie.map(d=>(
-                        <Row key={d.name} style={{gap:6}}>
-                          <div style={{width:7,height:7,borderRadius:"50%",background:COLORS[d.name]||"#64748b",flexShrink:0}}/>
-                          <span style={{color:"#9ca3af",fontSize:10,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</span>
-                          <span style={{color:"#d1d5db",fontSize:10}}>{fmtK(d.value)}</span>
-                        </Row>
-                      ))}
+                      {pie.map(d=>(<Row key={d.name} style={{gap:6}}><div style={{width:7,height:7,borderRadius:"50%",background:COLORS[d.name]||"#64748b",flexShrink:0}}/><span style={{color:"#9ca3af",fontSize:10,flex:1,overflow:"hidden",textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{d.name}</span><span style={{color:"#d1d5db",fontSize:10}}>{fmtK(d.value)}</span></Row>))}
                     </div>
                   </Row>
                 </Card>
               )}
+
+              {/* Income breakdown */}
               <Card>
-                <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 10px"}}>Income Breakdown</p>
-                {Object.entries(bySrc).map(([s,a])=>(
-                  <Row key={s} style={{justifyContent:"space-between",padding:"9px 0",borderBottom:"1px solid #1a2740"}}>
-                    <span style={{color:"#d1d5db",fontSize:13}}>{s}</span>
-                    <span style={{color:"#10b981",fontWeight:600,fontSize:13}}>{fmt(a)}</span>
-                  </Row>
-                ))}
+                <p style={{color:"#9ca3af",fontSize:12,margin:"0 0 10px"}}>Income Sources</p>
+                {Object.entries(bySrc).map(([s,a])=>(<StatRow key={s} label={s} value={fmt(a)} color="#10b981"/>))}
                 {!Object.keys(bySrc).length&&<p style={{color:"#374151",fontSize:13,textAlign:"center",padding:16}}>No income recorded</p>}
               </Card>
             </>
           )}
 
-          {showAdd&&(
-            <Modal title="New Savings Goal" onClose={()=>setShowAdd(false)}>
-              <FInput label="Goal Name" placeholder="e.g. Emergency Fund, School Fees…" value={gForm.name} onChange={e=>setGForm({...gForm,name:e.target.value})}/>
-              <FInput label="Target Amount (LKR)" type="number" inputMode="decimal" placeholder="100000" value={gForm.target_amount} onChange={e=>setGForm({...gForm,target_amount:e.target.value})}/>
-              <FInput label="Target Date (optional)" type="date" value={gForm.target_date} onChange={e=>setGForm({...gForm,target_date:e.target.value})}/>
-              {sug>0&&<div style={{borderRadius:12,padding:12,marginBottom:14,fontSize:12,color:"#10b981",background:"#10b98115"}}>💡 App will assign {fmt(sug)}/month as your contribution</div>}
-              <Btn onClick={addGoal} disabled={busy||!gForm.name||!gForm.target_amount}>{busy?"Saving…":"Create Goal"}</Btn>
-            </Modal>
-          )}
-          {contrib&&(
-            <Modal title={`Add to: ${contrib.name}`} onClose={()=>setContrib(null)}>
-              <FInput label="Amount (LKR)" type="number" inputMode="decimal" placeholder="0.00" value={cAmt} onChange={e=>setCAmt(e.target.value)}/>
-              <Btn onClick={()=>addC(contrib)} disabled={busy||!cAmt}>{busy?"Saving…":"Add to Goal"}</Btn>
-            </Modal>
-          )}
+          {showAdd&&(<Modal title="New Savings Goal" onClose={()=>setShowAdd(false)}><FInput label="Goal Name" placeholder="e.g. Emergency Fund…" value={gForm.name} onChange={e=>setGForm({...gForm,name:e.target.value})}/><FInput label="Target Amount (LKR)" type="number" inputMode="decimal" placeholder="100000" value={gForm.target_amount} onChange={e=>setGForm({...gForm,target_amount:e.target.value})}/><FInput label="Target Date (optional)" type="date" value={gForm.target_date} onChange={e=>setGForm({...gForm,target_date:e.target.value})}/>{sug>0&&<div style={{borderRadius:12,padding:12,marginBottom:14,fontSize:12,color:"#10b981",background:"#10b98115"}}>💡 App will assign {fmt(sug)}/month as your contribution</div>}<Btn onClick={addGoal} disabled={busy||!gForm.name||!gForm.target_amount}>{busy?"Saving…":"Create Goal"}</Btn></Modal>)}
+          {contrib&&(<Modal title={`Add to: ${contrib.name}`} onClose={()=>setContrib(null)}><FInput label="Amount (LKR)" type="number" inputMode="decimal" placeholder="0.00" value={cAmt} onChange={e=>setCAmt(e.target.value)}/><Btn onClick={()=>addC(contrib)} disabled={busy||!cAmt}>{busy?"Saving…":"Add to Goal"}</Btn></Modal>)}
         </div>
       );
     }
@@ -826,28 +724,21 @@
         setLoading(false);
       },[]);
 
-      const handleAuth = (tok,usr) => { setToken(tok); setUser(usr); load(tok,usr.id); };
-      const refresh    = () => load(token,user?.id);
-      const logout     = async () => {
+      const handleAuth=(tok,usr)=>{ setToken(tok); setUser(usr); load(tok,usr.id); };
+      const refresh=()=>load(token,user?.id);
+      const logout=async()=>{
         try { await fetch(`${SB_URL}/auth/v1/logout`,{method:"POST",headers:{apikey:SB_KEY,Authorization:`Bearer ${token}`}}); } catch {}
         setToken(null); setUser(null);
       };
 
       if (!token) return <AuthScreen onAuth={handleAuth}/>;
 
-      const TABS=[
-        {id:"home",    ic:"home",    lb:"Home"},
-        {id:"income",  ic:"dollar",  lb:"Income"},
-        {id:"bills",   ic:"receipt", lb:"Bills"},
-        {id:"expenses",ic:"wallet",  lb:"Expenses"},
-        {id:"lend",    ic:"swap",    lb:"Lend"},
-        {id:"more",    ic:"dots",    lb:"More"},
-      ];
+      const TABS=[{id:"home",ic:"home",lb:"Home"},{id:"income",ic:"dollar",lb:"Income"},{id:"bills",ic:"receipt",lb:"Bills"},{id:"expenses",ic:"wallet",lb:"Expenses"},{id:"lend",ic:"swap",lb:"Lend"},{id:"more",ic:"dots",lb:"More"}];
       const TITLES={home:"Dashboard",income:"Income",bills:"Bills",expenses:"Expenses",lend:"Lend / Borrow",more:"More"};
       const SCREENS={
-        home:     <Dashboard data={data}/>,
-        income:   <IncomeScreen   token={token} userId={user?.id} data={data} onRefresh={refresh}/>,
-        bills:    <BillsScreen    token={token} userId={user?.id} data={data} onRefresh={refresh}/>,
+        home:     <Dashboard     data={data}/>,
+        income:   <IncomeScreen  token={token} userId={user?.id} data={data} onRefresh={refresh}/>,
+        bills:    <BillsScreen   token={token} userId={user?.id} data={data} onRefresh={refresh}/>,
         expenses: <ExpensesScreen token={token} userId={user?.id} data={data} onRefresh={refresh}/>,
         lend:     <LendingScreen  token={token} userId={user?.id} data={data} onRefresh={refresh}/>,
         more:     <MoreScreen     token={token} userId={user?.id} data={data} onRefresh={refresh}/>,
@@ -855,43 +746,23 @@
 
       return (
         <div style={{background:"#070d1b",minHeight:"100vh",fontFamily:"Outfit,sans-serif",maxWidth:480,margin:"0 auto"}}>
-          {/* Header */}
           <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",padding:"12px 16px",position:"sticky",top:0,zIndex:40,background:"#070d1b",borderBottom:"1px solid #121c30"}}>
-            <div>
-              <h1 style={{color:"#fff",fontSize:18,fontWeight:700,margin:"0 0 1px",fontFamily:"Outfit,sans-serif"}}>{TITLES[tab]}</h1>
-              <p style={{color:"#374151",fontSize:10,margin:0}}>{MONTHS[CM()-1]} {CY()} · {user?.email?.split("@")[0]}</p>
-            </div>
+            <div><h1 style={{color:"#fff",fontSize:18,fontWeight:700,margin:"0 0 1px",fontFamily:"Outfit,sans-serif"}}>{TITLES[tab]}</h1><p style={{color:"#374151",fontSize:10,margin:0}}>{MONTHS[CM()-1]} {CY()} · {user?.email?.split("@")[0]}</p></div>
             <div style={{display:"flex",gap:8}}>
-              <button onClick={refresh} style={{width:36,height:36,borderRadius:"50%",background:"#121c30",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
-                <Ic n="refresh" size={15} color={loading?"#10b981":"#9ca3af"}/>
-              </button>
-              <button onClick={logout} style={{width:36,height:36,borderRadius:"50%",background:"#121c30",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}>
-                <Ic n="logout" size={15} color="#9ca3af"/>
-              </button>
+              <button onClick={refresh} style={{width:36,height:36,borderRadius:"50%",background:"#121c30",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><Ic n="refresh" size={15} color={loading?"#10b981":"#9ca3af"}/></button>
+              <button onClick={logout} style={{width:36,height:36,borderRadius:"50%",background:"#121c30",border:"none",display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer"}}><Ic n="logout" size={15} color="#9ca3af"/></button>
             </div>
           </div>
-
           {error&&<div style={{margin:"8px 16px",borderRadius:12,padding:12,fontSize:12,color:"#f87171",background:"#ef444415"}}>{error}</div>}
-
           <div style={{padding:"14px 14px 110px"}}>
             {loading&&!data.income.length
-              ? <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"80px 0",gap:12}}>
-                  <div style={{width:40,height:40,borderRadius:"50%",border:"3px solid #10b981",borderTopColor:"transparent",animation:"spin 1s linear infinite"}}/>
-                  <p style={{color:"#6b7280",fontSize:13,margin:0}}>Loading your data…</p>
-                </div>
+              ? <div style={{display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",padding:"80px 0",gap:12}}><div style={{width:40,height:40,borderRadius:"50%",border:"3px solid #10b981",borderTopColor:"transparent",animation:"spin 1s linear infinite"}}/><p style={{color:"#6b7280",fontSize:13,margin:0}}>Loading your data…</p></div>
               : SCREENS[tab]
             }
           </div>
-
-          {/* Bottom Nav */}
           <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#0c1525",borderTop:"1px solid #1a2740",zIndex:40,paddingBottom:"env(safe-area-inset-bottom,4px)"}}>
             <div style={{display:"flex"}}>
-              {TABS.map(({id,ic,lb})=>(
-                <button key={id} onClick={()=>setTab(id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"9px 0",border:"none",background:"transparent",cursor:"pointer",color:tab===id?"#10b981":"#374155",transition:"color .2s",fontFamily:"Outfit,sans-serif"}}>
-                  <Ic n={ic} size={19} color={tab===id?"#10b981":"#374155"}/>
-                  <span style={{fontSize:9,fontWeight:tab===id?600:400}}>{lb}</span>
-                </button>
-              ))}
+              {TABS.map(({id,ic,lb})=>(<button key={id} onClick={()=>setTab(id)} style={{flex:1,display:"flex",flexDirection:"column",alignItems:"center",gap:3,padding:"9px 0",border:"none",background:"transparent",cursor:"pointer",color:tab===id?"#10b981":"#374155",transition:"color .2s",fontFamily:"Outfit,sans-serif"}}><Ic n={ic} size={19} color={tab===id?"#10b981":"#374155"}/><span style={{fontSize:9,fontWeight:tab===id?600:400}}>{lb}</span></button>))}
             </div>
           </div>
         </div>
@@ -902,9 +773,7 @@
   </script>
   <script>
     if ("serviceWorker" in navigator) {
-      window.addEventListener("load", () => {
-        navigator.serviceWorker.register("sw.js").catch(e=>console.warn("SW:",e));
-      });
+      window.addEventListener("load", () => { navigator.serviceWorker.register("sw.js").catch(e=>console.warn("SW:",e)); });
     }
   </script>
 </body>
