@@ -369,7 +369,7 @@
   /* Dashboard */
   function Dashboard({data,onTransfer}) {
     const balances = calcBalances(data);
-    const mInc=mFilter(data.income), mBill=mFilter(data.bills), mExp=mFilter(data.transactions), mLend=mFilter(data.lendings||[]);
+    const mInc=mFilter(data.income), mBill=mFilter(data.bills), mExp=mFilter(data.transactions), mLend=data.lendings||[];
     const mData={income:mInc,bills:mBill,transactions:mExp,lendings:mLend};
     const {tInc,tBill,tSpent,lentOut,recovered,borrowed,repaid,pendingOwed,pendingOwing}=calcFinancials(mData);
     const disp=tInc-tBill, budget=smartBudget(disp);
@@ -775,7 +775,7 @@
     const [busy,setBusy]=useState(false);
 
     const balances=calcBalances(data);
-    const mInc=mFilter(data.income),mBill=mFilter(data.bills),mExp=mFilter(data.transactions),mLend=mFilter(data.lendings||[]),mTr=mFilter(data.transfers||[]);
+    const mInc=mFilter(data.income),mBill=mFilter(data.bills),mExp=mFilter(data.transactions),mLend=data.lendings||[],mTr=mFilter(data.transfers||[]);
     const {tInc,tBill,tSpent,lentOut,recovered,borrowed,repaid,pendingOwed,pendingOwing}=calcFinancials({income:mInc,bills:mBill,transactions:mExp,lendings:mLend});
     const bud=smartBudget(tInc-tBill), sug=bud['Savings']?.amount||0;
     const cashIn=tInc+borrowed+recovered, cashOut=tBill+tSpent+lentOut+repaid, monthBal=cashIn-cashOut;
