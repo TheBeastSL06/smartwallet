@@ -26,7 +26,7 @@
 </head>
 <body>
 <div id="root"></div>
-<script type="text/babel">
+<script type="text/babel" data-presets="react">
   const { useState, useCallback } = React;
 
   const SB_URL = 'https://rvlvbrgysnnuxmyozuuw.supabase.co';
@@ -777,7 +777,7 @@
     const balances=calcBalances(data);
     const mInc=mFilter(data.income),mBill=mFilter(data.bills),mExp=mFilter(data.transactions),mLend=data.lendings||[],mTr=mFilter(data.transfers||[]);
     const {tInc,tBill,tSpent,lentOut,recovered,borrowed,repaid,pendingOwed,pendingOwing}=calcFinancials({income:mInc,bills:mBill,transactions:mExp,lendings:mLend});
-    const bud=smartBudget(tInc-tBill), sug=bud['Savings']?.amount||0;
+    const bud=smartBudget(tInc-tBill), sug=(bud['Savings']&&bud['Savings'].amount)||0;
     const cashIn=tInc+borrowed+recovered, cashOut=tBill+tSpent+lentOut+repaid, monthBal=cashIn-cashOut;
 
     const byC={}; mExp.forEach(t=>{byC[t.category]=(byC[t.category]||0)+Number(t.amount);});
@@ -912,7 +912,7 @@
     },[]);
 
     const handleAuth=(tok,usr)=>{setToken(tok);setUser(usr);load(tok,usr.id);};
-    const refresh=()=>load(token,user?.id);
+    const refresh=()=>load(token,user&&user.id);
     const logout=async()=>{ try{await fetch(SB_URL+'/auth/v1/logout',{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+token}});}catch{} setToken(null);setUser(null); };
 
     if(!token) return <AuthScreen onAuth={handleAuth}/>;
@@ -921,17 +921,17 @@
     const TITLES={home:'Dashboard',income:'Income',bills:'Bills',expenses:'Expenses',lend:'Lend / Borrow',more:'More'};
     const SCREENS={
       home:     <Dashboard     data={data} onTransfer={()=>setShowTransfer(true)}/>,
-      income:   <IncomeScreen  token={token} userId={user?.id} data={data} onRefresh={refresh}/>,
-      bills:    <BillsScreen   token={token} userId={user?.id} data={data} onRefresh={refresh}/>,
-      expenses: <ExpensesScreen token={token} userId={user?.id} data={data} onRefresh={refresh}/>,
-      lend:     <LendingScreen  token={token} userId={user?.id} data={data} onRefresh={refresh}/>,
-      more:     <MoreScreen     token={token} userId={user?.id} data={data} onRefresh={refresh}/>,
+      income:   <IncomeScreen  token={token} userId={user&&user.id} data={data} onRefresh={refresh}/>,
+      bills:    <BillsScreen   token={token} userId={user&&user.id} data={data} onRefresh={refresh}/>,
+      expenses: <ExpensesScreen token={token} userId={user&&user.id} data={data} onRefresh={refresh}/>,
+      lend:     <LendingScreen  token={token} userId={user&&user.id} data={data} onRefresh={refresh}/>,
+      more:     <MoreScreen     token={token} userId={user&&user.id} data={data} onRefresh={refresh}/>,
     };
 
     return (
       <div style={{background:'#070d1b',minHeight:'100vh',fontFamily:'Outfit,sans-serif',maxWidth:480,margin:'0 auto'}}>
         <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',position:'sticky',top:0,zIndex:40,background:'#070d1b',borderBottom:'1px solid #121c30'}}>
-          <div><h1 style={{color:'#fff',fontSize:18,fontWeight:700,margin:'0 0 1px',fontFamily:'Outfit,sans-serif'}}>{TITLES[tab]}</h1><p style={{color:'#374151',fontSize:10,margin:0}}>{MONTHS[CM()-1]} {CY()} · {user?.email?.split('@')[0]}</p></div>
+          <div><h1 style={{color:'#fff',fontSize:18,fontWeight:700,margin:'0 0 1px',fontFamily:'Outfit,sans-serif'}}>{TITLES[tab]}</h1><p style={{color:'#374151',fontSize:10,margin:0}}>{MONTHS[CM()-1]} {CY()} · {user&&user.email&&user.email.split('@')[0]}</p></div>
           <div style={{display:'flex',gap:8}}>
             <button onClick={refresh} style={{width:36,height:36,borderRadius:'50%',background:'#121c30',border:'none',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}><Ic n='refresh' size={15} color={loading?'#10b981':'#9ca3af'}/></button>
             <button onClick={logout}  style={{width:36,height:36,borderRadius:'50%',background:'#121c30',border:'none',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}><Ic n='logout' size={15} color='#9ca3af'/></button>
@@ -949,7 +949,7 @@
             {TABS.map(({id,ic,lb})=>(<button key={id} onClick={()=>setTab(id)} style={{flex:1,display:'flex',flexDirection:'column',alignItems:'center',gap:3,padding:'9px 0',border:'none',background:'transparent',cursor:'pointer',color:tab===id?'#10b981':'#374155',transition:'color .2s',fontFamily:'Outfit,sans-serif'}}><Ic n={ic} size={19} color={tab===id?'#10b981':'#374155'}/><span style={{fontSize:9,fontWeight:tab===id?600:400}}>{lb}</span></button>))}
           </div>
         </div>
-        {showTransfer&&<TransferModal token={token} userId={user?.id} onClose={()=>setShowTransfer(false)} onRefresh={refresh}/>}
+        {showTransfer&&<TransferModal token={token} userId={user&&user.id} onClose={()=>setShowTransfer(false)} onRefresh={refresh}/>}
       </div>
     );
   }
