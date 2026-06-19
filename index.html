@@ -267,12 +267,49 @@
     );
   };
 
+  /* Horizontal Category Bar Chart for vs-baseline comparisons */
+  const HorizCatChart = ({pie, baseline, baseLabel, baseColor}) => {
+    if (!baseline || baseline <= 0) return <p style={{color:'#4b5563',fontSize:12,textAlign:'center',padding:'12px 0'}}>No {baseLabel} income recorded</p>;
+    const total = pie.reduce((s,d)=>s+d.value,0);
+    return (
+      <div style={{display:'flex',flexDirection:'column',gap:10}}>
+        {pie.map(d=>{
+          const pct=Math.round(d.value/baseline*100);
+          const barW=Math.min(d.value/baseline,1)*100;
+          return (
+            <div key={d.name}>
+              <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:4}}>
+                <div style={{display:'flex',alignItems:'center',gap:5}}>
+                  <div style={{width:7,height:7,borderRadius:'50%',background:COLORS[d.name]||'#64748b',flexShrink:0}}/>
+                  <span style={{color:'#9ca3af',fontSize:11}}>{d.name}</span>
+                </div>
+                <div style={{display:'flex',alignItems:'center',gap:8}}>
+                  <span style={{color:'#a3e635',fontSize:11,fontWeight:700}}>{pct}%</span>
+                  <span style={{color:'#d1d5db',fontSize:11}}>{fmtK(d.value)}</span>
+                </div>
+              </div>
+              <div style={{background:'#1a2740',borderRadius:4,height:7,overflow:'hidden'}}>
+                <div style={{height:'100%',borderRadius:4,width:barW+'%',background:COLORS[d.name]||'#64748b',transition:'width .6s'}}/>
+              </div>
+            </div>
+          );
+        })}
+        <div style={{marginTop:4,borderTop:'1px solid #1a2740',paddingTop:10,display:'flex',flexDirection:'column',gap:4}}>
+          <div style={{display:'flex',justifyContent:'space-between'}}><span style={{color:'#6b7280',fontSize:11}}>{baseLabel}</span><span style={{color:baseColor,fontSize:11,fontWeight:600}}>{fmtK(baseline)}</span></div>
+          <div style={{display:'flex',justifyContent:'space-between'}}><span style={{color:'#6b7280',fontSize:11}}>Total Expenses</span><span style={{color:'#f59e0b',fontSize:11,fontWeight:600}}>{fmtK(total)}</span></div>
+          <div style={{display:'flex',justifyContent:'space-between'}}><span style={{color:'#6b7280',fontSize:11}}>% of {baseLabel} Spent</span><span style={{color:total>baseline?'#f87171':'#34d399',fontSize:12,fontWeight:700}}>{baseline>0?Math.round(total/baseline*100):0}%</span></div>
+        </div>
+      </div>
+    );
+  };
+
   /* Calendar View */
-  function CalendarView({data}) {
+  function CalendarView({data, vm, vy}) {
     const [selDay,setSelDay]=useState(null);
-    const now=new Date(), y=now.getFullYear(), m=now.getMonth();
-    const dim=new Date(y,m+1,0).getDate(), fd=new Date(y,m,1).getDay(), todayD=now.getDate();
-    const curM=m+1, curY=y;
+    const now=new Date(), curM=vm, curY=vy;
+    const m=curM-1, y=curY;
+    const dim=new Date(y,m+1,0).getDate(), fd=new Date(y,m,1).getDay();
+    const todayD=(vm===CM()&&vy===CY())?now.getDate():-1;
 
     const mInc  = data.income.filter(i=>i.month===curM&&i.year===curY);
     const mExp  = data.transactions.filter(t=>t.month===curM&&t.year===curY);
@@ -373,9 +410,9 @@
   }
 
   /* Dashboard */
-  function Dashboard({data,onTransfer}) {
+  function Dashboard({data,onTransfer,vm,vy}) {
     const balances = calcBalances(data);
-    const mInc=mFilter(data.income), mBill=mFilter(data.bills), mExp=mFilter(data.transactions), mLend=data.lendings||[];
+    const mInc=data.income.filter(i=>i.month===vm&&i.year===vy), mBill=data.bills.filter(b=>b.month===vm&&b.year===vy), mExp=data.transactions.filter(t=>t.month===vm&&t.year===vy), mLend=data.lendings||[];
     const mData={income:mInc,bills:mBill,transactions:mExp,lendings:mLend};
     const {tInc,tBill,tSpent,lentOut,recovered,borrowed,repaid,pendingOwed,pendingOwing}=calcFinancials(mData);
     const disp=tInc-tBill, budget=smartBudget(disp);
@@ -414,7 +451,7 @@
         {/* This month hero */}
         <div style={{borderRadius:24,padding:20,background:'linear-gradient(135deg,#064e3b,#065f46,#047857)',position:'relative',overflow:'hidden'}}>
           <div style={{position:'absolute',top:-28,right:-28,width:120,height:120,borderRadius:'50%',background:'rgba(255,255,255,.08)'}}/>
-          <p style={{color:'#a7f3d0',fontSize:11,margin:'0 0 2px',fontWeight:500}}>{MONTHS[CM()-1]} {CY()} — This Month</p>
+          <p style={{color:'#a7f3d0',fontSize:11,margin:'0 0 2px',fontWeight:500}}>{MONTHS[vm-1]} {vy}{vm===CM()&&vy===CY()?' — This Month':' — Historical'}</p>
           <p style={{color:'rgba(255,255,255,.55)',fontSize:12,margin:0}}>Total Income</p>
           <h2 style={{color:'#fff',fontSize:30,fontWeight:800,margin:'2px 0 12px',fontFamily:'Outfit,sans-serif'}}>{fmtK(tInc)}</h2>
           <div style={{display:'flex',gap:14,flexWrap:'wrap'}}>
@@ -467,18 +504,18 @@
         {/* Calendar */}
         <Card>
           <Row style={{gap:6,marginBottom:12}}><Ic n='calendar' size={14} color='#9ca3af'/><p style={{color:'#9ca3af',fontSize:12,margin:0}}>Calendar View</p></Row>
-          <CalendarView data={data}/>
+          <CalendarView data={data} vm={vm} vy={vy}/>
         </Card>
       </div>
     );
   }
 
   /* Income */
-  function IncomeScreen({token,userId,data,onRefresh}) {
+  function IncomeScreen({token,userId,data,onRefresh,vm,vy}) {
     const [showM,setShowM]=useState(false),[editing,setEditing]=useState(null);
     const [form,setForm]=useState({source:'Salary',amount:'',note:'',date:today(),destination:'Bank'});
     const [busy,setBusy]=useState(false);
-    const monthIncome=mFilter(data.income);
+    const monthIncome=data.income.filter(i=>i.month===vm&&i.year===vy);
     const total=monthIncome.reduce((s,i)=>s+Number(i.amount),0);
     const bySrc={}; monthIncome.forEach(i=>{bySrc[i.source]=(bySrc[i.source]||0)+Number(i.amount);});
 
@@ -496,7 +533,7 @@
     return (
       <div style={{display:'flex',flexDirection:'column',gap:12}}>
         <Card>
-          <p style={{color:'#9ca3af',fontSize:12,margin:'0 0 4px'}}>Total Income — {MONTHS[CM()-1]} {CY()}</p>
+          <p style={{color:'#9ca3af',fontSize:12,margin:'0 0 4px'}}>Total Income — {MONTHS[vm-1]} {vy}</p>
           <h2 style={{color:'#34d399',fontSize:26,fontWeight:800,margin:'0 0 12px',fontFamily:'Outfit,sans-serif'}}>{fmt(total)}</h2>
           <div style={{display:'flex',flexWrap:'wrap',gap:8}}>
             {Object.entries(bySrc).map(([s,a])=>(<div key={s} style={{background:'#1a2740',borderRadius:10,padding:'5px 10px'}}><p style={{color:'#6b7280',fontSize:10,margin:'0 0 1px'}}>{s}</p><p style={{color:'#fff',fontSize:12,fontWeight:600,margin:0}}>{fmtK(a)}</p></div>))}
@@ -534,11 +571,11 @@
   }
 
   /* Bills */
-  function BillsScreen({token,userId,data,onRefresh}) {
+  function BillsScreen({token,userId,data,onRefresh,vm,vy}) {
     const [showM,setShowM]=useState(false),[editing,setEditing]=useState(null);
     const [form,setForm]=useState({bill_type:'Electricity',bill_name:'Electricity Bill',amount:'',due_day:'',source:'Bank'});
     const [busy,setBusy]=useState(false);
-    const monthBills=mFilter(data.bills);
+    const monthBills=data.bills.filter(b=>b.month===vm&&b.year===vy);
     const total=monthBills.reduce((s,b)=>s+Number(b.amount||0),0);
     const paid=monthBills.filter(b=>b.paid).reduce((s,b)=>s+Number(b.amount||0),0);
 
@@ -589,11 +626,11 @@
   }
 
   /* Expenses */
-  function ExpensesScreen({token,userId,data,onRefresh}) {
+  function ExpensesScreen({token,userId,data,onRefresh,vm,vy}) {
     const [showM,setShowM]=useState(false),[editing,setEditing]=useState(null);
     const [form,setForm]=useState({category:'Food & Groceries',amount:'',note:'',date:today(),source:'Cash'});
     const [busy,setBusy]=useState(false);
-    const monthExp=mFilter(data.transactions);
+    const monthExp=data.transactions.filter(t=>t.month===vm&&t.year===vy);
     const total=monthExp.reduce((s,t)=>s+Number(t.amount),0);
 
     const openAdd=()=>{ setEditing(null); setForm({category:'Food & Groceries',amount:'',note:'',date:today(),source:'Cash'}); setShowM(true); };
@@ -611,7 +648,7 @@
 
     return (
       <div style={{display:'flex',flexDirection:'column',gap:12}}>
-        <Card><p style={{color:'#9ca3af',fontSize:12,margin:'0 0 4px'}}>Total Expenses — {MONTHS[CM()-1]}</p><h2 style={{color:'#f87171',fontSize:26,fontWeight:800,margin:0,fontFamily:'Outfit,sans-serif'}}>{fmt(total)}</h2></Card>
+        <Card><p style={{color:'#9ca3af',fontSize:12,margin:'0 0 4px'}}>Total Expenses — {MONTHS[vm-1]} {vy}</p><h2 style={{color:'#f87171',fontSize:26,fontWeight:800,margin:0,fontFamily:'Outfit,sans-serif'}}>{fmt(total)}</h2></Card>
         <Btn onClick={openAdd}>+ Add Expense</Btn>
         {dates.map(d=>(
           <div key={d}>
@@ -775,14 +812,14 @@
   }
 
   /* More — Goals + Reports */
-  function MoreScreen({token,userId,data,onRefresh}) {
+  function MoreScreen({token,userId,data,onRefresh,vm,vy}) {
     const [section,setSection]=useState('goals');
     const [showAdd,setShowAdd]=useState(false),[contrib,setContrib]=useState(null);
     const [gForm,setGForm]=useState({name:'',target_amount:'',target_date:''}),[cAmt,setCAmt]=useState('');
     const [busy,setBusy]=useState(false);
 
     const balances=calcBalances(data);
-    const mInc=mFilter(data.income),mBill=mFilter(data.bills),mExp=mFilter(data.transactions),mLend=data.lendings||[],mTr=mFilter(data.transfers||[]);
+    const mInc=data.income.filter(i=>i.month===vm&&i.year===vy),mBill=data.bills.filter(b=>b.month===vm&&b.year===vy),mExp=data.transactions.filter(t=>t.month===vm&&t.year===vy),mLend=data.lendings||[],mTr=(data.transfers||[]).filter(t=>t.month===vm&&t.year===vy);
     const {tInc,tBill,tSpent,lentOut,recovered,borrowed,repaid,pendingOwed,pendingOwing}=calcFinancials({income:mInc,bills:mBill,transactions:mExp,lendings:mLend});
     const bud=smartBudget(tInc-tBill), sug=(bud['Savings']&&bud['Savings'].amount)||0;
     const cashIn=tInc+borrowed+recovered, cashOut=tBill+tSpent+lentOut+repaid, monthBal=cashIn-cashOut;
@@ -790,6 +827,7 @@
     const byC={}; mExp.forEach(t=>{byC[t.category]=(byC[t.category]||0)+Number(t.amount);});
     const pie=Object.entries(byC).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
     const bySrc={}; mInc.forEach(i=>{bySrc[i.source]=(bySrc[i.source]||0)+Number(i.amount);});
+    const salary=mInc.filter(i=>i.source==='Salary').reduce((s,i)=>s+Number(i.amount),0);
     const mTransfers=mTr.reduce((s,t)=>s+Number(t.amount),0);
 
     const bars=[{name:'Income',value:tInc,fill:'#10b981'},{name:'Borrowed',value:borrowed,fill:'#06b6d4'},{name:'Recovered',value:recovered,fill:'#60a5fa'},{name:'Bills',value:tBill,fill:'#ef4444'},{name:'Expenses',value:tSpent,fill:'#f59e0b'},{name:'Lent',value:lentOut,fill:'#f43f5e'},{name:'Repaid',value:repaid,fill:'#fb923c'}].filter(b=>b.value>0);
@@ -812,7 +850,7 @@
         {section==='goals'?(
           <>
             <Card>
-              <p style={{color:'#9ca3af',fontSize:12,margin:'0 0 4px'}}>This Month Savings Potential</p>
+              <p style={{color:'#9ca3af',fontSize:12,margin:'0 0 4px'}}>{MONTHS[vm-1]} {vy} Savings Potential</p>
               <h2 style={{color:monthBal>=0?'#a3e635':'#f87171',fontSize:26,fontWeight:800,margin:'0 0 4px',fontFamily:'Outfit,sans-serif'}}>{monthBal>=0?'':'-'}{fmt(Math.abs(monthBal))}</h2>
               {sug>0&&<p style={{color:'#6b7280',fontSize:12,margin:0}}>Suggested: <span style={{color:'#10b981'}}>{fmt(sug)}/month</span></p>}
             </Card>
@@ -890,6 +928,18 @@
               {Object.entries(bySrc).map(([s,a])=>(<StatRow key={s} label={s} value={fmt(a)} color='#10b981'/>))}
               {!Object.keys(bySrc).length&&<p style={{color:'#374151',fontSize:13,textAlign:'center',padding:16}}>No income recorded</p>}
             </Card>
+            {/* Expenses vs Salary */}
+            {pie.length>0&&<Card>
+              <p style={{color:'#9ca3af',fontSize:12,margin:'0 0 2px'}}>Expenses vs Salary</p>
+              <p style={{color:'#4b5563',fontSize:10,margin:'0 0 14px'}}>How much of your salary each category uses</p>
+              <HorizCatChart pie={pie} baseline={salary} baseLabel='Salary' baseColor='#10b981'/>
+            </Card>}
+            {/* Expenses vs Total Income */}
+            {pie.length>0&&<Card>
+              <p style={{color:'#9ca3af',fontSize:12,margin:'0 0 2px'}}>Expenses vs Total Income</p>
+              <p style={{color:'#4b5563',fontSize:10,margin:'0 0 14px'}}>How much of all income each category uses</p>
+              <HorizCatChart pie={pie} baseline={tInc} baseLabel='Total Income' baseColor='#34d399'/>
+            </Card>}
           </>
         )}
         {showAdd&&<Modal title='New Savings Goal' onClose={()=>setShowAdd(false)}><FInput label='Goal Name' placeholder='e.g. Emergency Fund…' value={gForm.name} onChange={e=>setGForm({...gForm,name:e.target.value})}/><FInput label='Target Amount (LKR)' type='number' inputMode='decimal' placeholder='100000' value={gForm.target_amount} onChange={e=>setGForm({...gForm,target_amount:e.target.value})}/><FInput label='Target Date (optional)' type='date' value={gForm.target_date} onChange={e=>setGForm({...gForm,target_date:e.target.value})}/>{sug>0&&<div style={{borderRadius:12,padding:12,marginBottom:14,fontSize:12,color:'#10b981',background:'#10b98115'}}>💡 App will assign {fmt(sug)}/month as your contribution</div>}<Btn onClick={addGoal} disabled={busy||!gForm.name||!gForm.target_amount}>{busy?'Saving…':'Create Goal'}</Btn></Modal>}
@@ -901,6 +951,10 @@
   /* Main App */
   function App() {
     const [token,setToken]=useState(null),[user,setUser]=useState(null),[tab,setTab]=useState('home');
+    const [viewMonth,setViewMonth]=useState(CM()),[viewYear,setViewYear]=useState(CY());
+    const prevMonth=()=>{if(viewMonth===1){setViewMonth(12);setViewYear(viewYear-1);}else setViewMonth(viewMonth-1);};
+    const nextMonth=()=>{const nm=viewMonth===12?1:viewMonth+1,ny=viewMonth===12?viewYear+1:viewYear;if(ny>CY()||(ny===CY()&&nm>CM()))return;setViewMonth(nm);setViewYear(ny);};
+    const isCurr=viewMonth===CM()&&viewYear===CY();
     const [data,setData]=useState({income:[],bills:[],transactions:[],goals:[],lendings:[],transfers:[]});
     const [loading,setLoading]=useState(false),[error,setError]=useState(''),[showTransfer,setShowTransfer]=useState(false);
 
@@ -927,21 +981,31 @@
     const TABS=[{id:'home',ic:'home',lb:'Home'},{id:'income',ic:'dollar',lb:'Income'},{id:'bills',ic:'receipt',lb:'Bills'},{id:'expenses',ic:'wallet',lb:'Expenses'},{id:'lend',ic:'swap',lb:'Lend'},{id:'more',ic:'dots',lb:'More'}];
     const TITLES={home:'Dashboard',income:'Income',bills:'Bills',expenses:'Expenses',lend:'Lend / Borrow',more:'More'};
     const SCREENS={
-      home:     <Dashboard     data={data} onTransfer={()=>setShowTransfer(true)}/>,
-      income:   <IncomeScreen  token={token} userId={user&&user.id} data={data} onRefresh={refresh}/>,
-      bills:    <BillsScreen   token={token} userId={user&&user.id} data={data} onRefresh={refresh}/>,
-      expenses: <ExpensesScreen token={token} userId={user&&user.id} data={data} onRefresh={refresh}/>,
+      home:     <Dashboard     data={data} onTransfer={()=>setShowTransfer(true)} vm={viewMonth} vy={viewYear}/>,
+      income:   <IncomeScreen  token={token} userId={user&&user.id} data={data} onRefresh={refresh} vm={viewMonth} vy={viewYear}/>,
+      bills:    <BillsScreen   token={token} userId={user&&user.id} data={data} onRefresh={refresh} vm={viewMonth} vy={viewYear}/>,
+      expenses: <ExpensesScreen token={token} userId={user&&user.id} data={data} onRefresh={refresh} vm={viewMonth} vy={viewYear}/>,
       lend:     <LendingScreen  token={token} userId={user&&user.id} data={data} onRefresh={refresh}/>,
-      more:     <MoreScreen     token={token} userId={user&&user.id} data={data} onRefresh={refresh}/>,
+      more:     <MoreScreen     token={token} userId={user&&user.id} data={data} onRefresh={refresh} vm={viewMonth} vy={viewYear}/>,
     };
 
     return (
       <div style={{background:'#070d1b',minHeight:'100vh',fontFamily:'Outfit,sans-serif',maxWidth:480,margin:'0 auto'}}>
-        <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',position:'sticky',top:0,zIndex:40,background:'#070d1b',borderBottom:'1px solid #121c30'}}>
-          <div><h1 style={{color:'#fff',fontSize:18,fontWeight:700,margin:'0 0 1px',fontFamily:'Outfit,sans-serif'}}>{TITLES[tab]}</h1><p style={{color:'#374151',fontSize:10,margin:0}}>{MONTHS[CM()-1]} {CY()} · {user&&user.email&&user.email.split('@')[0]}</p></div>
-          <div style={{display:'flex',gap:8}}>
-            <button onClick={refresh} style={{width:36,height:36,borderRadius:'50%',background:'#121c30',border:'none',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}><Ic n='refresh' size={15} color={loading?'#10b981':'#9ca3af'}/></button>
-            <button onClick={logout}  style={{width:36,height:36,borderRadius:'50%',background:'#121c30',border:'none',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}><Ic n='logout' size={15} color='#9ca3af'/></button>
+        <div style={{position:'sticky',top:0,zIndex:40,background:'#070d1b'}}>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'12px 16px',borderBottom:'1px solid #121c30'}}>
+            <div><h1 style={{color:'#fff',fontSize:18,fontWeight:700,margin:'0 0 1px',fontFamily:'Outfit,sans-serif'}}>{TITLES[tab]}</h1><p style={{color:'#374151',fontSize:10,margin:0}}>{user&&user.email&&user.email.split('@')[0]}</p></div>
+            <div style={{display:'flex',gap:8}}>
+              <button onClick={refresh} style={{width:36,height:36,borderRadius:'50%',background:'#121c30',border:'none',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}><Ic n='refresh' size={15} color={loading?'#10b981':'#9ca3af'}/></button>
+              <button onClick={logout}  style={{width:36,height:36,borderRadius:'50%',background:'#121c30',border:'none',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}><Ic n='logout' size={15} color='#9ca3af'/></button>
+            </div>
+          </div>
+          <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',padding:'6px 16px',borderBottom:'1px solid #121c30',background:'#0c1525'}}>
+            <button onClick={prevMonth} style={{width:30,height:30,borderRadius:'50%',background:'#1a2740',border:'none',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer',color:'#9ca3af',fontSize:18,lineHeight:1}}>‹</button>
+            <div style={{textAlign:'center'}}>
+              <span style={{color:isCurr?'#10b981':'#f59e0b',fontSize:13,fontWeight:700,fontFamily:'Outfit,sans-serif'}}>{MONTHS[viewMonth-1]} {viewYear}</span>
+              {!isCurr&&<span style={{color:'#f59e0b',fontSize:9,display:'block',fontWeight:500,marginTop:1}}>📅 Historical View</span>}
+            </div>
+            <button onClick={nextMonth} disabled={isCurr} style={{width:30,height:30,borderRadius:'50%',background:isCurr?'transparent':'#1a2740',border:'none',display:'flex',alignItems:'center',justifyContent:'center',cursor:isCurr?'default':'pointer',color:isCurr?'#2d3748':'#9ca3af',fontSize:18,lineHeight:1}}>›</button>
           </div>
         </div>
         {error&&<div style={{margin:'8px 16px',borderRadius:12,padding:12,fontSize:12,color:'#f87171',background:'#ef444415'}}>{error}</div>}
