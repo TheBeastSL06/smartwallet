@@ -42,8 +42,8 @@
   const INC_SRC  = ['Salary','Overtime','Allowances','Bonus','Other'];
   const BILL_TYP = ['Loan Installment','Credit Card','Electricity','Router/Internet','Telephone','Water','Custom'];
   const BILL_DEF = {'Loan Installment':'Loan Installment','Credit Card':'Credit Card Bill','Electricity':'Electricity Bill','Router/Internet':'Router / Internet Bill','Telephone':'Telephone Bill','Water':'Water Bill','Custom':'Custom Bill'};
-  const EXP_CATS = ['Food & Groceries','Transport','Family & Kids','Health','Education','Leisure','Emergency','Other'];
-  const COLORS   = {'Food & Groceries':'#10b981','Transport':'#3b82f6','Family & Kids':'#f59e0b','Health':'#ef4444','Education':'#8b5cf6','Leisure':'#06b6d4','Savings':'#84cc16','Buffer':'#64748b','Emergency':'#f97316','Other':'#9ca3af'};
+  const EXP_CATS = ['Food & Groceries','Eggs & Yoghurts','Transport','Family & Kids','Health','Education','Leisure','Emergency','Other'];
+  const COLORS   = {'Food & Groceries':'#10b981','Eggs & Yoghurts':'#f0abfc','Transport':'#3b82f6','Family & Kids':'#f59e0b','Health':'#ef4444','Education':'#8b5cf6','Leisure':'#06b6d4','Savings':'#84cc16','Buffer':'#64748b','Emergency':'#f97316','Other':'#9ca3af'};
   const DAYS     = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 
   /* Icons */
@@ -879,7 +879,7 @@
               <Row style={{alignItems:'center'}}>
                 <Donut data={pie}/>
                 <div style={{flex:1,paddingLeft:10,display:'flex',flexDirection:'column',gap:5}}>
-                  {pie.map(d=>(<Row key={d.name} style={{gap:6}}><div style={{width:7,height:7,borderRadius:'50%',background:COLORS[d.name]||'#64748b',flexShrink:0}}/><span style={{color:'#9ca3af',fontSize:10,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{d.name}</span><span style={{color:'#d1d5db',fontSize:10}}>{fmtK(d.value)}</span></Row>))}
+                  {pie.map(d=>{ const tot=pie.reduce((s,x)=>s+x.value,0); const pct=tot>0?Math.round(d.value/tot*100):0; return (<Row key={d.name} style={{gap:5,marginBottom:2}}><div style={{width:7,height:7,borderRadius:'50%',background:COLORS[d.name]||'#64748b',flexShrink:0}}/><span style={{color:'#9ca3af',fontSize:10,flex:1,overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{d.name}</span><span style={{color:'#a3e635',fontSize:10,fontWeight:600,flexShrink:0,marginRight:4}}>{pct}%</span><span style={{color:'#d1d5db',fontSize:10,flexShrink:0}}>{fmtK(d.value)}</span></Row>); })}
                 </div>
               </Row>
             </Card>}
