@@ -42,8 +42,8 @@
   const INC_SRC  = ['Salary','Overtime','Allowances','Bonus','Other'];
   const BILL_TYP = ['Loan Installment','Credit Card','Electricity','Router/Internet','Telephone','Water','Custom'];
   const BILL_DEF = {'Loan Installment':'Loan Installment','Credit Card':'Credit Card Bill','Electricity':'Electricity Bill','Router/Internet':'Router / Internet Bill','Telephone':'Telephone Bill','Water':'Water Bill','Custom':'Custom Bill'};
-  const EXP_CATS = ['Foods','Transport','Family & Kids','Health','Education','Leisure','Emergency','Other'];
-  const COLORS   = {'Foods':'#10b981','Transport':'#3b82f6','Family & Kids':'#f59e0b','Health':'#ef4444','Education':'#8b5cf6','Leisure':'#06b6d4','Savings':'#84cc16','Buffer':'#64748b','Emergency':'#f97316','Other':'#9ca3af'};
+  const EXP_CATS = ['Food & Groceries','Eggs & Yoghurts','Transport','Family & Kids','Health','Education','Leisure','Emergency','Other'];
+  const COLORS   = {'Food & Groceries':'#10b981','Eggs & Yoghurts':'#f0abfc','Transport':'#3b82f6','Family & Kids':'#f59e0b','Health':'#ef4444','Education':'#8b5cf6','Leisure':'#06b6d4','Savings':'#84cc16','Buffer':'#64748b','Emergency':'#f97316','Other':'#9ca3af'};
   const DAYS     = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 
   /* Icons */
@@ -591,12 +591,12 @@
   /* Expenses */
   function ExpensesScreen({token,userId,data,onRefresh}) {
     const [showM,setShowM]=useState(false),[editing,setEditing]=useState(null);
-    const [form,setForm]=useState({category:'Foods',amount:'',note:'',date:today(),source:'Cash'});
+    const [form,setForm]=useState({category:'Food & Groceries',amount:'',note:'',date:today(),source:'Cash'});
     const [busy,setBusy]=useState(false);
     const monthExp=mFilter(data.transactions);
     const total=monthExp.reduce((s,t)=>s+Number(t.amount),0);
 
-    const openAdd=()=>{ setEditing(null); setForm({category:'Foods',amount:'',note:'',date:today(),source:'Cash'}); setShowM(true); };
+    const openAdd=()=>{ setEditing(null); setForm({category:'Food & Groceries',amount:'',note:'',date:today(),source:'Cash'}); setShowM(true); };
     const openEdit=r=>{ setEditing(r); setForm({category:r.category,amount:String(r.amount),note:r.note||'',date:r.date,source:r.source||'Cash'}); setShowM(true); };
     const save=async()=>{
       if(!form.amount)return; setBusy(true);
@@ -787,8 +787,7 @@
     const bud=smartBudget(tInc-tBill), sug=(bud['Savings']&&bud['Savings'].amount)||0;
     const cashIn=tInc+borrowed+recovered, cashOut=tBill+tSpent+lentOut+repaid, monthBal=cashIn-cashOut;
 
-    const normCat=c=>(c==='Food & Groceries'||c==='Eggs & Yoghurts')?'Foods':c;
-    const byC={}; mExp.forEach(t=>{const c=normCat(t.category);byC[c]=(byC[c]||0)+Number(t.amount);});
+    const byC={}; mExp.forEach(t=>{byC[t.category]=(byC[t.category]||0)+Number(t.amount);});
     const pie=Object.entries(byC).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
     const bySrc={}; mInc.forEach(i=>{bySrc[i.source]=(bySrc[i.source]||0)+Number(i.amount);});
     const mTransfers=mTr.reduce((s,t)=>s+Number(t.amount),0);
