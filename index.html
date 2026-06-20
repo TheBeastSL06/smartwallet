@@ -43,7 +43,7 @@
   const BILL_TYP = ['Loan Installment','Credit Card','Electricity','Router/Internet','Telephone','Water','Custom'];
   const BILL_DEF = {'Loan Installment':'Loan Installment','Credit Card':'Credit Card Bill','Electricity':'Electricity Bill','Router/Internet':'Router / Internet Bill','Telephone':'Telephone Bill','Water':'Water Bill','Custom':'Custom Bill'};
   const EXP_CATS = ['Food & Groceries','Eggs & Yoghurts','Transport','Family & Kids','Health','Education','Leisure','Emergency','Other'];
-  const COLORS   = {'Food & Groceries':'#10b981','Eggs & Yoghurts':'#f0abfc','Transport':'#3b82f6','Family & Kids':'#f59e0b','Health':'#ef4444','Education':'#8b5cf6','Leisure':'#06b6d4','Savings':'#84cc16','Buffer':'#64748b','Emergency':'#f97316','Other':'#9ca3af'};
+  const COLORS   = {'Food & Groceries':'#10b981','Eggs & Yoghurts':'#f0abfc','Transport':'#3b82f6','Family & Kids':'#f59e0b','Health':'#ef4444','Education':'#8b5cf6','Leisure':'#06b6d4','Savings':'#84cc16','Buffer':'#64748b','Emergency':'#f97316','Other':'#9ca3af','Loan Installment':'#ef4444','Credit Card':'#f97316','Electricity':'#fbbf24','Router/Internet':'#3b82f6','Telephone':'#8b5cf6','Water':'#06b6d4','Custom':'#9ca3af'};
   const DAYS     = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 
   /* Icons */
@@ -828,6 +828,8 @@
     const pie=Object.entries(byC).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
     const bySrc={}; mInc.forEach(i=>{bySrc[i.source]=(bySrc[i.source]||0)+Number(i.amount);});
     const salary=mInc.filter(i=>i.source==='Salary').reduce((s,i)=>s+Number(i.amount),0);
+    const byBillType={}; mBill.forEach(b=>{byBillType[b.bill_type]=(byBillType[b.bill_type]||0)+Number(b.amount||0);});
+    const billsPie=Object.entries(byBillType).map(([name,value])=>({name,value})).sort((a,b)=>b.value-a.value);
     const mTransfers=mTr.reduce((s,t)=>s+Number(t.amount),0);
 
     const bars=[{name:'Income',value:tInc,fill:'#10b981'},{name:'Borrowed',value:borrowed,fill:'#06b6d4'},{name:'Recovered',value:recovered,fill:'#60a5fa'},{name:'Bills',value:tBill,fill:'#ef4444'},{name:'Expenses',value:tSpent,fill:'#f59e0b'},{name:'Lent',value:lentOut,fill:'#f43f5e'},{name:'Repaid',value:repaid,fill:'#fb923c'}].filter(b=>b.value>0);
@@ -939,6 +941,18 @@
               <p style={{color:'#9ca3af',fontSize:12,margin:'0 0 2px'}}>Expenses vs Total Income</p>
               <p style={{color:'#4b5563',fontSize:10,margin:'0 0 14px'}}>How much of all income each category uses</p>
               <HorizCatChart pie={pie} baseline={tInc} baseLabel='Total Income' baseColor='#34d399'/>
+            </Card>}
+            {/* Bills vs Salary */}
+            {billsPie.length>0&&<Card>
+              <p style={{color:'#9ca3af',fontSize:12,margin:'0 0 2px'}}>Bills vs Salary</p>
+              <p style={{color:'#4b5563',fontSize:10,margin:'0 0 14px'}}>How much of your salary each bill type uses</p>
+              <HorizCatChart pie={billsPie} baseline={salary} baseLabel='Salary' baseColor='#10b981'/>
+            </Card>}
+            {/* Bills vs Total Income */}
+            {billsPie.length>0&&<Card>
+              <p style={{color:'#9ca3af',fontSize:12,margin:'0 0 2px'}}>Bills vs Total Income</p>
+              <p style={{color:'#4b5563',fontSize:10,margin:'0 0 14px'}}>How much of all income each bill type uses</p>
+              <HorizCatChart pie={billsPie} baseline={tInc} baseLabel='Total Income' baseColor='#34d399'/>
             </Card>}
           </>
         )}
