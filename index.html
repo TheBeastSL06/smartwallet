@@ -42,8 +42,8 @@
   const INC_SRC  = ['Salary','Overtime','Allowances','Bonus','Other'];
   const BILL_TYP = ['Loan Installment','Credit Card','Electricity','Router/Internet','Telephone','Water','Custom'];
   const BILL_DEF = {'Loan Installment':'Loan Installment','Credit Card':'Credit Card Bill','Electricity':'Electricity Bill','Router/Internet':'Router / Internet Bill','Telephone':'Telephone Bill','Water':'Water Bill','Custom':'Custom Bill'};
-  const EXP_CATS = ['Food & Groceries','Eggs & Yoghurts','Transport','Family & Kids','Health','Education','Leisure','Emergency','Other'];
-  const COLORS   = {'Food & Groceries':'#10b981','Eggs & Yoghurts':'#f0abfc','Transport':'#3b82f6','Family & Kids':'#f59e0b','Health':'#ef4444','Education':'#8b5cf6','Leisure':'#06b6d4','Savings':'#84cc16','Buffer':'#64748b','Emergency':'#f97316','Other':'#9ca3af','Loan Installment':'#ef4444','Credit Card':'#f97316','Electricity':'#fbbf24','Router/Internet':'#3b82f6','Telephone':'#8b5cf6','Water':'#06b6d4','Custom':'#9ca3af'};
+  const EXP_CATS = ['Food & Groceries','Eggs & Yoghurts','Snacks','Transport','Family & Kids','Health','Education','Leisure','Emergency','Other'];
+  const COLORS   = {'Food & Groceries':'#10b981','Eggs & Yoghurts':'#f0abfc','Snacks':'#fb923c','Transport':'#3b82f6','Family & Kids':'#f59e0b','Health':'#ef4444','Education':'#8b5cf6','Leisure':'#06b6d4','Savings':'#84cc16','Buffer':'#64748b','Emergency':'#f97316','Other':'#9ca3af','Loan Installment':'#ef4444','Credit Card':'#f97316','Electricity':'#fbbf24','Router/Internet':'#3b82f6','Telephone':'#8b5cf6','Water':'#06b6d4','Custom':'#9ca3af'};
   const DAYS     = ['Su','Mo','Tu','We','Th','Fr','Sa'];
 
   /* Icons */
@@ -416,7 +416,7 @@
     const mData={income:mInc,bills:mBill,transactions:mExp,lendings:mLend};
     const {tInc,tBill,tSpent,lentOut,recovered,borrowed,repaid,pendingOwed,pendingOwing}=calcFinancials(mData);
     const disp=tInc-tBill, budget=smartBudget(disp);
-    const normCat=c=>(c==='Food & Groceries'||c==='Eggs & Yoghurts')?'Foods':c;
+    const normCat=c=>(c==='Food & Groceries'||c==='Eggs & Yoghurts'||c==='Snacks')?'Foods':c;
     const byC={}; mExp.forEach(t=>{const c=normCat(t.category);byC[c]=(byC[c]||0)+Number(t.amount);});
 
     const td=new Date().getDate(), todayStr=today();
