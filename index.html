@@ -415,7 +415,7 @@
     const mInc=data.income.filter(i=>i.month===vm&&i.year===vy), mBill=data.bills.filter(b=>b.month===vm&&b.year===vy), mExp=data.transactions.filter(t=>t.month===vm&&t.year===vy), mLend=data.lendings||[];
     const mData={income:mInc,bills:mBill,transactions:mExp,lendings:mLend};
     const {tInc,tBill,tSpent,lentOut,recovered,borrowed,repaid,pendingOwed,pendingOwing}=calcFinancials(mData);
-    const disp=tInc-tBill, budget=smartBudget(disp);
+    const disp=balances.total, budget=smartBudget(disp);
     const normCat=c=>(c==='Food & Groceries'||c==='Eggs & Yoghurts'||c==='Snacks')?'Foods':c;
     const byC={}; mExp.forEach(t=>{const c=normCat(t.category);byC[c]=(byC[c]||0)+Number(t.amount);});
 
