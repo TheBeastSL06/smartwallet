@@ -415,7 +415,7 @@
     const mInc=data.income.filter(i=>i.month===vm&&i.year===vy), mBill=data.bills.filter(b=>b.month===vm&&b.year===vy), mExp=data.transactions.filter(t=>t.month===vm&&t.year===vy), mLend=data.lendings||[];
     const mData={income:mInc,bills:mBill,transactions:mExp,lendings:mLend};
     const {tInc,tBill,tSpent,lentOut,recovered,borrowed,repaid,pendingOwed,pendingOwing}=calcFinancials(mData);
-    const disp=(tInc+borrowed+recovered)-tBill, budget=smartBudget(disp);
+    const disp=(tInc+borrowed+recovered)-(tBill+lentOut+repaid), budget=smartBudget(disp);
     const normCat=c=>(c==='Food & Groceries'||c==='Eggs & Yoghurts'||c==='Snacks')?'Foods':c;
     const totalSaved=data.goals.reduce((s,g)=>s+Number(g.current_amount),0);
     const byC={}; mExp.forEach(t=>{const c=normCat(t.category);byC[c]=(byC[c]||0)+Number(t.amount);});
@@ -834,7 +834,7 @@
     const balances=calcBalances(data);
     const mInc=data.income.filter(i=>i.month===vm&&i.year===vy),mBill=data.bills.filter(b=>b.month===vm&&b.year===vy),mExp=data.transactions.filter(t=>t.month===vm&&t.year===vy),mLend=data.lendings||[],mTr=(data.transfers||[]).filter(t=>t.month===vm&&t.year===vy);
     const {tInc,tBill,tSpent,lentOut,recovered,borrowed,repaid,pendingOwed,pendingOwing}=calcFinancials({income:mInc,bills:mBill,transactions:mExp,lendings:mLend});
-    const bud=smartBudget((tInc+borrowed+recovered)-tBill), sug=(bud['Savings']&&bud['Savings'].amount)||0;
+    const bud=smartBudget((tInc+borrowed+recovered)-(tBill+lentOut+repaid)), sug=(bud['Savings']&&bud['Savings'].amount)||0;
     const totalSaved=data.goals.reduce((s,g)=>s+Number(g.current_amount),0);
     const cashIn=tInc+borrowed+recovered, cashOut=tBill+tSpent+lentOut+repaid, monthBal=cashIn-cashOut;
 
