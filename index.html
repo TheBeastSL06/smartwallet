@@ -92,6 +92,10 @@
     async del(tbl, t, id) {
       const r = await fetch(SB_URL+'/rest/v1/'+tbl+'?id=eq.'+id, { method:'DELETE', headers:{ apikey:SB_KEY, Authorization:'Bearer '+(t||SB_KEY) } });
       return r.ok;
+    },
+    async delWhere(tbl, t, qs) {
+      const r = await fetch(SB_URL+'/rest/v1/'+tbl+'?'+qs, { method:'DELETE', headers:{ apikey:SB_KEY, Authorization:'Bearer '+(t||SB_KEY) } });
+      return r.ok;
     }
   };
 
@@ -828,7 +832,7 @@
   function MoreScreen({token,userId,data,onRefresh,vm,vy}) {
     const [section,setSection]=useState('goals');
     const [showAdd,setShowAdd]=useState(false),[contrib,setContrib]=useState(null);
-    const [gForm,setGForm]=useState({name:'',target_amount:'',target_date:'',contribution_source:'Bank'}),[cAmt,setCAmt]=useState('');
+    const [gForm,setGForm]=useState({name:'',target_amount:'',target_date:'',contribution_source:'Bank'}),[cAmt,setCAmt]=useState(''),[editContrib,setEditContrib]=useState(null),[editAmt,setEditAmt]=useState('');
     const [busy,setBusy]=useState(false);
 
     const balances=calcBalances(data);
@@ -859,7 +863,19 @@
       await sb.ins('transactions',token,{user_id:userId,category:'Savings',amount:parseFloat(cAmt),note:'Savings: '+g.name,date:today(),month:CM(),year:CY(),source:g.contribution_source||'Bank'});
       setCAmt(''); setContrib(null); onRefresh(); setBusy(false);
     };
-    const delG=async id=>{await sb.del('savings_goals',token,id);onRefresh();};
+    const delG=async g=>{
+      await sb.delWhere('transactions',token,'category=eq.Savings&note=eq.Savings: '+encodeURIComponent(g.name));
+      await sb.del('savings_goals',token,g.id);
+      onRefresh();
+    };
+    const saveEditContrib=async()=>{
+      if(!editContrib||!editAmt)return; setBusy(true);
+      const oldAmt=Number(editContrib.amount), newAmt=parseFloat(editAmt), diff=newAmt-oldAmt;
+      await sb.upd('transactions',token,editContrib.id,{amount:newAmt});
+      const g=data.goals.find(x=>x.name===editContrib.note.replace('Savings: ',''));
+      if(g) await sb.upd('savings_goals',token,g.id,{current_amount:Math.max(0,Number(g.current_amount)+diff)});
+      setEditContrib(null); setEditAmt(''); onRefresh(); setBusy(false);
+    };
 
     return (
       <div style={{display:'flex',flexDirection:'column',gap:12}}>
@@ -878,11 +894,12 @@
                 <Card key={g.id}>
                   <Row style={{justifyContent:'space-between',alignItems:'flex-start',marginBottom:10}}>
                     <div><p style={{color:'#fff',fontWeight:600,margin:'0 0 2px'}}>{g.name}</p><p style={{color:'#6b7280',fontSize:11,margin:'0 0 1px'}}>Target: {fmt(g.target_amount)}</p><p style={{color:'#4b5563',fontSize:10,margin:'0 0 1px'}}>Source: {g.contribution_source||'Bank'}</p>{ml&&ml>0&&<p style={{color:'#4b5563',fontSize:10,margin:0}}>~{ml} month{ml>1?'s':''} to go</p>}</div>
-                    <button onClick={()=>delG(g.id)} style={{width:28,height:28,borderRadius:'50%',background:'#1a2740',border:'none',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}><Ic n='trash' size={12} color='#f87171'/></button>
+                    <button onClick={()=>delG(g)} style={{width:28,height:28,borderRadius:'50%',background:'#1a2740',border:'none',display:'flex',alignItems:'center',justifyContent:'center',cursor:'pointer'}}><Ic n='trash' size={12} color='#f87171'/></button>
                   </Row>
                   <div style={{background:'#1a2740',borderRadius:6,height:8,overflow:'hidden',marginBottom:4}}><div style={{height:'100%',borderRadius:6,width:pct*100+'%',background:'linear-gradient(90deg,#84cc16,#65a30d)',transition:'width .5s'}}/></div>
                   <Row style={{justifyContent:'space-between',marginBottom:10}}><span style={{color:'#6b7280',fontSize:11}}>Saved: {fmt(g.current_amount)}</span><span style={{color:'#a3e635',fontWeight:600,fontSize:11}}>{Math.round(pct*100)}%</span></Row>
                   <button onClick={()=>setContrib(g)} style={{width:'100%',borderRadius:10,padding:'8px 0',fontSize:12,fontWeight:600,border:'1px solid #10b98133',background:'#10b98115',color:'#10b981',cursor:'pointer',fontFamily:'Outfit,sans-serif'}}>+ Add Savings</button>
+                  {(()=>{const contribs=data.transactions.filter(t=>t.category==='Savings'&&t.note==='Savings: '+g.name); return contribs.length>0&&(<div style={{marginTop:10}}><p style={{color:'#4b5563',fontSize:10,margin:'0 0 6px'}}>Contributions</p>{contribs.map(c=>(<Row key={c.id} style={{justifyContent:'space-between',alignItems:'center',marginBottom:4}}><div><span style={{color:'#9ca3af',fontSize:10}}>{c.date}</span><span style={{color:'#d1d5db',fontSize:11,marginLeft:6}}>{fmt(c.amount)}</span></div><button onClick={()=>{setEditContrib(c);setEditAmt(String(c.amount));}} style={{background:'#1a2740',border:'none',borderRadius:6,padding:'2px 8px',color:'#60a5fa',fontSize:10,cursor:'pointer'}}>Edit</button></Row>))}</div>); })()}
                 </Card>
               );
             })}
@@ -973,6 +990,7 @@
         )}
         {showAdd&&<Modal title='New Savings Goal' onClose={()=>setShowAdd(false)}><FInput label='Goal Name' placeholder='e.g. Emergency Fund…' value={gForm.name} onChange={e=>setGForm({...gForm,name:e.target.value})}/><FInput label='Target Amount (LKR)' type='number' inputMode='decimal' placeholder='100000' value={gForm.target_amount} onChange={e=>setGForm({...gForm,target_amount:e.target.value})}/><FInput label='Target Date (optional)' type='date' value={gForm.target_date} onChange={e=>setGForm({...gForm,target_date:e.target.value})}/>{sug>0&&<div style={{borderRadius:12,padding:12,marginBottom:14,fontSize:12,color:'#10b981',background:'#10b98115'}}>💡 App will assign {fmt(sug)}/month as your contribution</div>}<FSel label='Fund Source' value={gForm.contribution_source} onChange={e=>setGForm({...gForm,contribution_source:e.target.value})}><option value='Bank'>🏦 Bank</option><option value='Cash'>💵 Cash</option></FSel><Btn onClick={addGoal} disabled={busy||!gForm.name||!gForm.target_amount}>{busy?'Saving…':'Create Goal'}</Btn></Modal>}
         {contrib&&<Modal title={'Add to: '+contrib.name} onClose={()=>setContrib(null)}><div style={{borderRadius:12,padding:12,marginBottom:14,fontSize:12,color:'#60a5fa',background:'#3b82f615'}}>🏦 Fund Source: {contrib.contribution_source||'Bank'}</div><FInput label='Amount (LKR)' type='number' inputMode='decimal' placeholder='0.00' value={cAmt} onChange={e=>setCAmt(e.target.value)}/><Btn onClick={()=>addC(contrib)} disabled={busy||!cAmt}>{busy?'Saving…':'Add to Goal'}</Btn></Modal>}
+        {editContrib&&<Modal title='Edit Contribution' onClose={()=>{setEditContrib(null);setEditAmt('');}}><div style={{borderRadius:12,padding:12,marginBottom:14,fontSize:12,color:'#9ca3af',background:'#1a274080'}}><span>{editContrib.note}</span> · <span>{editContrib.date}</span></div><FInput label='New Amount (LKR)' type='number' inputMode='decimal' value={editAmt} onChange={e=>setEditAmt(e.target.value)}/><Btn onClick={saveEditContrib} disabled={busy||!editAmt}>{busy?'Saving…':'Save Changes'}</Btn></Modal>}
       </div>
     );
   }
