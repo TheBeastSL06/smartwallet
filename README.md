@@ -1,1 +1,1 @@
-# smartwallet
+# smartwallet-v1
