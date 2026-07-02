@@ -856,6 +856,7 @@
     const addC=async g=>{
       if(!cAmt)return; setBusy(true);
       await sb.upd('savings_goals',token,g.id,{current_amount:Number(g.current_amount)+parseFloat(cAmt)});
+      await sb.ins('transactions',token,{user_id:userId,category:'Savings',amount:parseFloat(cAmt),note:'Savings: '+g.name,date:today(),month:CM(),year:CY(),source:g.contribution_source||'Bank'});
       setCAmt(''); setContrib(null); onRefresh(); setBusy(false);
     };
     const delG=async id=>{await sb.del('savings_goals',token,id);onRefresh();};
