@@ -164,6 +164,15 @@
   const CY    = () => new Date().getFullYear();
   const ord   = n => { const s=['th','st','nd','rd'],v=n%100; return n+(s[(v-20)%10]||s[v]||s[0]); };
   const mFilter = (arr) => arr.filter(x=>x.month===CM()&&x.year===CY());
+  /* Lendings/Borrowings carry-forward filter: include if it happened in the viewed month,
+     OR it originated earlier and still has a remaining balance (unsettled) */
+  const lendFilterVM = (arr, vm, vy) => (arr||[]).filter(l=>{
+    if(!l.date) return !l.settled;
+    const [ly,lm] = l.date.split('-').map(Number);
+    if (ly===vy && lm===vm) return true;
+    if (ly<vy || (ly===vy && lm<vm)) return !l.settled;
+    return false;
+  });
 
   /* UI Primitives */
   const Card = ({children,style={}}) => <div style={{background:'#121c30',borderRadius:16,padding:16,...style}}>{children}</div>;
@@ -416,7 +425,7 @@
   /* Dashboard */
   function Dashboard({data,onTransfer,vm,vy}) {
     const balances = calcBalances(data);
-    const mInc=data.income.filter(i=>i.month===vm&&i.year===vy), mBill=data.bills.filter(b=>b.month===vm&&b.year===vy), mExp=data.transactions.filter(t=>t.month===vm&&t.year===vy), mLend=data.lendings||[];
+    const mInc=data.income.filter(i=>i.month===vm&&i.year===vy), mBill=data.bills.filter(b=>b.month===vm&&b.year===vy), mExp=data.transactions.filter(t=>t.month===vm&&t.year===vy), mLend=lendFilterVM(data.lendings,vm,vy);
     const mData={income:mInc,bills:mBill,transactions:mExp,lendings:mLend};
     const {tInc,tBill,tSpent,lentOut,recovered,borrowed,repaid,pendingOwed,pendingOwing}=calcFinancials(mData);
     const disp=(tInc+borrowed+recovered)-(tBill+lentOut+repaid), budget=smartBudget(disp);
@@ -836,7 +845,7 @@
     const [busy,setBusy]=useState(false);
 
     const balances=calcBalances(data);
-    const mInc=data.income.filter(i=>i.month===vm&&i.year===vy),mBill=data.bills.filter(b=>b.month===vm&&b.year===vy),mExp=data.transactions.filter(t=>t.month===vm&&t.year===vy),mLend=data.lendings||[],mTr=(data.transfers||[]).filter(t=>t.month===vm&&t.year===vy);
+    const mInc=data.income.filter(i=>i.month===vm&&i.year===vy),mBill=data.bills.filter(b=>b.month===vm&&b.year===vy),mExp=data.transactions.filter(t=>t.month===vm&&t.year===vy),mLend=lendFilterVM(data.lendings,vm,vy),mTr=(data.transfers||[]).filter(t=>t.month===vm&&t.year===vy);
     const {tInc,tBill,tSpent,lentOut,recovered,borrowed,repaid,pendingOwed,pendingOwing}=calcFinancials({income:mInc,bills:mBill,transactions:mExp,lendings:mLend});
     const bud=smartBudget((tInc+borrowed+recovered)-(tBill+lentOut+repaid)), sug=(bud['Savings']&&bud['Savings'].amount)||0;
     const totalSaved=data.goals.reduce((s,g)=>s+Number(g.current_amount),0);
