@@ -432,11 +432,14 @@
     const normCat=c=>(c==='Food & Groceries'||c==='Eggs & Yoghurts'||c==='Snacks')?'Foods':c;
     const totalSaved=data.goals.reduce((s,g)=>s+Number(g.current_amount),0);
     const byC={}; mExp.forEach(t=>{const c=normCat(t.category);byC[c]=(byC[c]||0)+Number(t.amount);});
-    const totalOverrun=Object.entries(byC).reduce((s,[c,sp])=>{ if(!budget[c]||c==='Buffer')return s; const over=sp-(budget[c].amount||0); return over>0?s+over:s; },0);
+    const totalOverrun=Object.entries(byC).reduce((s,[c,sp])=>{ if(!budget[c]||c==='Buffer'||c==='Emergency')return s; const over=sp-(budget[c].amount||0); return over>0?s+over:s; },0);
     const bufferBudget=(budget['Buffer']&&budget['Buffer'].amount)||0;
     const bufferSpent=totalOverrun;
     const bufferExcess=Math.max(0,bufferSpent-bufferBudget);
-    const overCats=bufferExcess>0?Object.entries(byC).filter(([c,sp])=>budget[c]&&c!=='Buffer'&&sp>budget[c].amount).map(([c,sp])=>c+': +'+fmtK(sp-budget[c].amount)):[];
+    const emergencyBudget=(budget['Emergency']&&budget['Emergency'].amount)||0;
+    const emergencySpent=(byC['Emergency']||0)+bufferExcess;
+    const emergencyExcess=Math.max(0,emergencySpent-emergencyBudget);
+    const overCats=emergencyExcess>0?Object.entries(byC).filter(([c,sp])=>budget[c]&&c!=='Buffer'&&c!=='Emergency'&&sp>budget[c].amount).map(([c,sp])=>c+': +'+fmtK(sp-budget[c].amount)):[];
 
     const td=new Date().getDate(), todayStr=today();
     const alerts=[];
@@ -495,16 +498,16 @@
           <Card>
             <Row style={{justifyContent:'space-between',marginBottom:12}}><span style={{color:'#9ca3af',fontSize:12}}>Smart Budget</span><span style={{color:'#10b981',fontSize:11}}>{fmtK(disp)} disposable</span></Row>
             {Object.entries(budget).map(([cat,{amount}])=>{
-              const sp=cat==='Buffer'?bufferSpent:cat==='Savings'?(totalSaved||0):(byC[cat]||0);
+              const sp=cat==='Buffer'?bufferSpent:cat==='Emergency'?emergencySpent:cat==='Savings'?(totalSaved||0):(byC[cat]||0);
               const pct=amount>0?Math.min(sp/amount,1):0;
               return <div key={cat} style={{marginBottom:10}}>
                 <Row style={{justifyContent:'space-between',marginBottom:4}}><span style={{color:'#d1d5db',fontSize:11}}>{cat}</span><span style={{color:'#6b7280',fontSize:10}}>{fmtK(sp)} / {fmtK(amount)}</span></Row>
                 <div style={{background:'#1a2740',borderRadius:4,height:5,overflow:'hidden'}}><div style={{height:'100%',borderRadius:4,width:(pct*100)+'%',background:pct>=1?'#ef4444':pct>=0.8?'#f59e0b':(COLORS[cat]||'#10b981'),transition:'width .5s'}}/></div>
               </div>;
             })}
-            {bufferExcess>0&&(
+            {emergencyExcess>0&&(
               <div style={{marginTop:10,borderRadius:10,padding:'10px 12px',background:'#ef444415',border:'1px solid #ef444433'}}>
-                <span style={{color:'#f87171',fontSize:12,fontWeight:700}}>🔴 Over Budget: {fmtK(bufferExcess)} beyond buffer</span>
+                <span style={{color:'#f87171',fontSize:12,fontWeight:700}}>🔴 Over Budget: {fmtK(emergencyExcess)} beyond emergency fund</span>
                 <div style={{marginTop:4,color:'#fca5a5',fontSize:11}}>{overCats.join(' · ')}</div>
               </div>
             )}
